@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">JuanChargeMobile</string>
+    <string name="title_activity_main">JuanChargeMobile</string>
+    <string name="package_name">com.juancharge.mobile</string>
+    <string name="custom_url_scheme">com.juancharge.mobile</string>
+</resources>
