@@ -1,5 +1,82 @@
-# Vue 3 + Vite
+# JuanCharge Mobile App ⚡
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+A Vue 3 + Capacitor mobile application for finding and managing EV charging stations.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## Features
+
+- **🏠 Home** - Dashboard with stats and quick actions
+- **🗺️ Map** - Find nearby charging stations
+- **📱 Scan QR** - Quick access to charging via QR code
+- **🏆 Achievements** - Track your charging milestones and earn rewards
+- **⚙️ Settings** - Customize your charging preferences
+
+## Development
+
+### Prerequisites
+- Node.js
+- Android Studio (for Android development)
+- Java JDK 17
+
+### Setup
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Run in browser (development):
+```bash
+npm run dev
+```
+
+3. Build for production:
+```bash
+npm run build
+```
+
+4. Sync with Capacitor:
+```bash
+npx cap sync android
+```
+
+### Running on Android
+
+1. Start an emulator:
+```bash
+emulator -avd Pixel_5 &
+```
+
+2. Run the app:
+```bash
+npx cap run android
+```
+
+Or open in Android Studio:
+```bash
+npx cap open android
+```
+
+## Tech Stack
+
+- **Vue 3** - Progressive JavaScript framework
+- **Vue Router** - Official router for Vue.js
+- **Vite** - Next generation frontend tooling
+- **Capacitor** - Cross-platform native runtime
+
+## Project Structure
+
+```
+src/
+├── components/
+│   └── BottomNav.vue       # Bottom navigation component
+├── views/
+│   ├── Home.vue            # Home page
+│   ├── Map.vue             # Map/stations page
+│   ├── ScanQR.vue          # QR scanner page
+│   ├── Achievements.vue    # Achievements page
+│   └── Settings.vue        # Settings page
+├── router/
+│   └── index.js            # Vue Router configuration
+├── App.vue                 # Root component
+└── main.js                 # Application entry point
+```

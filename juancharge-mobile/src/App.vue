@@ -1,30 +1,80 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import BottomNav from './components/BottomNav.vue'
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div id="app">
+    <div class="app-content">
+      <router-view />
+    </div>
+    <BottomNav />
   </div>
-  <HelloWorld msg="Vite + Vue" />
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+
+html {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+
+body {
+  font-family: 'Speedee', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: #f8f8f8;
+  color: #292929;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  position: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  background: #f8f8f8;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-content {
+  width: 100%;
+  min-height: 100vh;
+  padding-bottom: 100px;
+  overflow-x: hidden;
+}
+
+/* Remove default link styles */
+a {
+  text-decoration: none;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Button reset */
+button {
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent horizontal scroll */
+.app-content > * {
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 </style>

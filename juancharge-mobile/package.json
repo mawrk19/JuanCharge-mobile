@@ -13,8 +13,9 @@
     "@capacitor/core": "^7.4.4",
     "@vueuse/core": "^14.0.0",
     "axios": "^1.13.2",
-    "capacitor-sqlite": "^2.2.0",
-    "vue": "^3.5.22"
+    "lucide-vue-next": "^0.552.0",
+    "vue": "^3.5.22",
+    "vue-router": "^4.6.3"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.4.4",

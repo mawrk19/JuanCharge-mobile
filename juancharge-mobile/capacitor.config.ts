@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.juancharge.mobile',
-  appName: 'JuanChargeMobile',
+  appName: 'JuanCharge',
   webDir: 'dist',
   plugins: {
     SplashScreen: {
