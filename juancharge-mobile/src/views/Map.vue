@@ -5,52 +5,150 @@
     </div>
 
     <div class="search-bar">
-      <input type="text" placeholder="Search stations..." v-model="searchQuery" />
-      <button class="search-btn">🔍</button>
+      <input 
+        type="text" 
+        placeholder="Search stations..." 
+        v-model="searchQuery"
+        @input="filterStations"
+      />
+      <button class="search-btn" @click="fetchKiosks">🔍</button>
     </div>
 
-    <div class="map-container">
-      <div class="map-placeholder">
-        <div class="map-icon">📍</div>
-        <p>Map will be displayed here</p>
-        <small>Integration with Google Maps or Mapbox</small>
-      </div>
+    <!-- Loading State -->
+    <div v-if="loading" class="loading-state">
+      <p>Loading stations...</p>
     </div>
 
-    <div class="stations-list">
-      <h2>Nearby Stations</h2>
-      <div class="station-card" v-for="station in filteredStations" :key="station.id">
-        <div class="station-info">
-          <div class="station-name">{{ station.name }}</div>
-          <div class="station-distance">{{ station.distance }} km away</div>
-          <div class="station-status" :class="station.available ? 'available' : 'occupied'">
-            {{ station.available ? '✓ Available' : '⚠ Occupied' }}
-          </div>
+    <!-- Error State -->
+    <div v-else-if="error" class="error-state">
+      <p>{{ error }}</p>
+      <button @click="fetchKiosks">Retry</button>
+    </div>
+
+    <!-- Content -->
+    <template v-else>
+      <div class="map-container">
+        <div class="map-placeholder">
+          <div class="map-icon">📍</div>
+          <p>{{ kiosks.length }} station{{ kiosks.length !== 1 ? 's' : '' }} found</p>
+          <small>Map integration coming soon</small>
         </div>
-        <button class="navigate-btn">Navigate</button>
       </div>
-    </div>
+
+      <div class="stations-list">
+        <h2>Available Stations ({{ filteredKiosks.length }})</h2>
+        
+        <div v-if="filteredKiosks.length === 0" class="empty-state">
+          <p>No stations found</p>
+        </div>
+        
+        <div 
+          v-for="kiosk in filteredKiosks" 
+          :key="kiosk.id" 
+          class="station-card"
+        >
+          <div class="station-info">
+            <div class="station-name">{{ kiosk.kiosk_code }}</div>
+            <div class="station-distance">{{ kiosk.location }}</div>
+            <div 
+              class="station-status" 
+              :class="getStatusClass(kiosk.status)"
+            >
+              {{ getStatusLabel(kiosk.status) }}
+            </div>
+          </div>
+          <button 
+            class="navigate-btn" 
+            @click="navigateToKiosk(kiosk)"
+            :disabled="kiosk.status !== 'active'"
+          >
+            {{ kiosk.status === 'active' ? 'Start Charging' : 'Unavailable' }}
+          </button>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { kioskService } from '@/services/apiServices'
+import { API_CONSTANTS } from '@/services/apiConstants'
+
+const router = useRouter()
 
 const searchQuery = ref('')
+const kiosks = ref([])
+const loading = ref(true)
+const error = ref(null)
 
-const stations = ref([
-  { id: 1, name: 'SM Mall Station', distance: 1.2, available: true },
-  { id: 2, name: 'Ayala Center', distance: 2.5, available: true },
-  { id: 3, name: 'Robinson\'s Place', distance: 3.1, available: false },
-  { id: 4, name: 'Capitol Commons', distance: 4.0, available: true },
-  { id: 5, name: 'BGC Station', distance: 5.5, available: true }
-])
+// Fetch kiosks from API
+const fetchKiosks = async () => {
+  loading.value = true
+  error.value = null
+  
+  try {
+    const response = await kioskService.getAll()
+    kiosks.value = response.data.data
+  } catch (err) {
+    console.error('Kiosks error:', err)
+    error.value = err.response?.data?.message || 'Failed to load stations'
+    
+    if (err.response?.status === 401) {
+      localStorage.removeItem('auth_token')
+      router.push('/login')
+    }
+  } finally {
+    loading.value = false
+  }
+}
 
-const filteredStations = computed(() => {
-  if (!searchQuery.value) return stations.value
-  return stations.value.filter(station => 
-    station.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+// Filter kiosks by search query
+const filteredKiosks = computed(() => {
+  if (!searchQuery.value) return kiosks.value
+  
+  const query = searchQuery.value.toLowerCase()
+  return kiosks.value.filter(kiosk => 
+    kiosk.kiosk_code.toLowerCase().includes(query) ||
+    kiosk.location.toLowerCase().includes(query)
   )
+})
+
+// Get status CSS class
+const getStatusClass = (status) => {
+  return {
+    'active': 'available',
+    'inactive': 'occupied',
+    'maintenance': 'maintenance'
+  }[status] || 'occupied'
+}
+
+// Get status label
+const getStatusLabel = (status) => {
+  return {
+    'active': '✓ Available',
+    'inactive': '⚠ Offline',
+    'maintenance': '🔧 Maintenance'
+  }[status] || '⚠ Unavailable'
+}
+
+// Navigate to charging page with selected kiosk
+const navigateToKiosk = (kiosk) => {
+  if (kiosk.status === 'active') {
+    // Store selected kiosk in session storage
+    sessionStorage.setItem('selected_kiosk', JSON.stringify(kiosk))
+    router.push('/scan')
+  }
+}
+
+// Filter stations when typing
+const filterStations = () => {
+  // Computed property handles this automatically
+}
+
+onMounted(() => {
+  fetchKiosks()
 })
 </script>
 

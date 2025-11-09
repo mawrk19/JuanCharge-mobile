@@ -1,5 +1,14 @@
 <script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import BottomNav from './components/BottomNav.vue'
+
+const route = useRoute()
+
+// Hide navbar on login page
+const showNavbar = computed(() => {
+  return route.path !== '/login'
+})
 </script>
 
 <template>
@@ -7,7 +16,7 @@ import BottomNav from './components/BottomNav.vue'
     <div class="app-content">
       <router-view />
     </div>
-    <BottomNav />
+    <BottomNav v-if="showNavbar" />
   </div>
 </template>
 
