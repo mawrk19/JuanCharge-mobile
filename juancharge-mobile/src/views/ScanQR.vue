@@ -201,9 +201,8 @@ onBeforeUnmount(async () => {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  max-width: 300px;
+  max-width: 270px;
   margin: 0 auto;
-  background: #292929;
   border-radius: 50px;
   overflow: hidden;
   box-shadow: 0 6px 20px rgba(0,0,0,0.15);
@@ -211,14 +210,13 @@ onBeforeUnmount(async () => {
 }
 
 #qr-reader {
-  width: 100%;
-  height: 100%;
+  width:  350px;
+  height:  350px;
 }
 
 #qr-reader video {
-  width: 100%;
-  height: 100%;
-  
+  width: 350px;
+  height:  350px;
 }
 
 .scan-area {
