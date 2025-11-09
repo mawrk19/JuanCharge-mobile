@@ -219,11 +219,11 @@ const handleForgotPassword = async () => {
 .login-page {
   min-height: 100vh;
   height: 100vh;
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
+  background: #FFFFFF;
+  background: linear-gradient(20deg, rgba(255, 255, 255, 1) 45%, rgba(66, 184, 131, 1) 55%);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
   overflow: hidden;
   position: fixed;
   top: 0;
@@ -237,7 +237,7 @@ const handleForgotPassword = async () => {
   max-width: 400px;
   overflow-y: auto;
   max-height: 100vh;
-  padding: 20px 0;
+  padding: 20px;
 }
 
 .login-header {
@@ -246,12 +246,15 @@ const handleForgotPassword = async () => {
 }
 
 .logo {
-  width: 120px;
-  height: 120px;
+  width: 150px;
+  height: 150px;
   margin: 0 auto 16px;
   display: block;
-  animation: pulse 2s infinite;
+  /* animation: pulse 2s infinite; */
   object-fit: contain;
+  background-color: #F8F8F8;
+  border-radius: 16px;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 13px 27px -5px, rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
 }
 
 @keyframes pulse {
@@ -275,8 +278,9 @@ const handleForgotPassword = async () => {
 .login-form {
   background: white;
   border-radius: 20px;
-  padding: 32px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(50, 50, 93, 0.25), 0 2px 4px rgba(0, 0, 0, 0.3);
+
 }
 
 .form-group {
@@ -285,27 +289,31 @@ const handleForgotPassword = async () => {
 
 .form-group label {
   display: block;
-  font-size: 14px;
+  text-align: left;
+  padding: 4px;
+  font-size: 13px;
   color: #333;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 
 .form-group input {
   width: 100%;
   padding: 14px;
-  border: 2px solid #e0e0e0;
+  border: none;
   border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
+  color:#333;
+  font-size: 13px;
+  font-weight: normal;
   transition: all 0.3s;
   box-sizing: border-box;
+  background-color:#ffffff;
+  box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px, rgba(0, 0, 0, 0.24) 0px 1px 2px;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #42b883;
-  box-shadow: 0 0 0 3px rgba(66, 184, 131, 0.1);
+  border: 2px solid #6ec89f;
 }
 
 .form-group input:disabled {
