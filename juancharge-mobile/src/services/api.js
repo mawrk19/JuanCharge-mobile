@@ -33,28 +33,10 @@ api.interceptors.response.use(
   },
   async (error) => {
     if (error.response?.status === 401) {
-      // Unauthorized - try auto-login or clear credentials
-      console.warn('401 Unauthorized - clearing credentials')
+      // Unauthorized - clear credentials and redirect to login
+      console.warn('401 Unauthorized - session expired, redirecting to login')
       
-      // Try auto-login first
-      const deviceToken = await secureStorage.getDeviceToken()
-      if (deviceToken) {
-        try {
-          const { authService } = await import('./apiServices')
-          const response = await authService.autoLogin(deviceToken)
-          
-          if (response.data.success) {
-            // Update token and retry original request
-            await secureStorage.setApiToken(response.data.api_token)
-            error.config.headers.Authorization = `Bearer ${response.data.api_token}`
-            return axios.request(error.config)
-          }
-        } catch (autoLoginError) {
-          console.error('Auto-login failed:', autoLoginError)
-        }
-      }
-      
-      // Auto-login failed or no device token - clear all and redirect
+      // Clear all stored credentials
       await secureStorage.clearAll()
       
       // Redirect to login if in browser context

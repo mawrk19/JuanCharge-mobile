@@ -1,6 +1,6 @@
 <template>
   <nav class="bottom-nav">
-    <router-link to="/" class="nav-item" :class="{ active: currentRoute === '/' }">
+    <router-link to="/home" class="nav-item" :class="{ active: currentRoute === '/home' }">
       <Home class="nav-icon" :size="24" />
       <div class="nav-label">Home</div>
     </router-link>

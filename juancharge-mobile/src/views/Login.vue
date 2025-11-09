@@ -66,17 +66,6 @@
       <div class="app-version">
         <p>v1.0.0</p>
       </div>
-      <!-- Debug panel (visible when debugging in emulator) -->
-      <div v-if="debugEnabled" class="debug-panel">
-        <div class="debug-header">
-          <h4>Debug Output</h4>
-          <div class="debug-actions">
-            <button @click="copyDebug" class="debug-btn">Copy</button>
-            <button @click="clearDebug" class="debug-btn">Clear</button>
-          </div>
-        </div>
-        <pre class="debug-log">{{ debugMessages.join('\n') }}</pre>
-      </div>
     </div>
 
     <!-- Forgot Password Modal -->
@@ -144,46 +133,6 @@ const credentials = ref({
 
 const loading = ref(false)
 const error = ref(null)
-// Debug UI - enable for troubleshooting
-const debugEnabled = ref(true)
-const debugMessages = ref([])
-function pushDebug(msg) {
-  try {
-    debugMessages.value.unshift(new Date().toISOString() + ' - ' + String(msg))
-    // keep latest 50
-    if (debugMessages.value.length > 50) debugMessages.value.length = 50
-  } catch (e) { /* ignore */ }
-}
-
-// Copy debug to clipboard
-async function copyDebug() {
-  const txt = debugMessages.value.join('\n')
-  try {
-    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(txt)
-      alert('Debug copied to clipboard')
-      return
-    }
-  } catch (e) {
-    // fallthrough to textarea fallback
-  }
-  // Fallback
-  try {
-    const ta = document.createElement('textarea')
-    ta.value = txt
-    document.body.appendChild(ta)
-    ta.select()
-    document.execCommand('copy')
-    document.body.removeChild(ta)
-    alert('Debug copied to clipboard')
-  } catch (e) {
-    alert('Unable to copy debug output')
-  }
-}
-
-function clearDebug() {
-  debugMessages.value = []
-}
 
 // Forgot password
 const showForgotPassword = ref(false)
@@ -197,20 +146,7 @@ const handleLogin = async () => {
   loading.value = true
   error.value = null
 
-  // Prepare request values so they're available in catch/fallback
-  const authBody = { email: credentials.value.email, password: credentials.value.password }
-  const base = api.defaults.baseURL || import.meta.env.VITE_API_URL || 'undefined'
-  const authUrl = base.replace(/\/$/, '') + '/mobile/auth/login'
-
   try {
-    // Debug logs: show computed base URL, origin and request body
-    console.log('DEBUG: AUTH_URL ->', authUrl)
-    pushDebug('AUTH_URL -> ' + authUrl)
-    console.log('DEBUG: location.origin ->', typeof location !== 'undefined' ? location.origin : 'no-location')
-    pushDebug('location.origin -> ' + (typeof location !== 'undefined' ? location.origin : 'no-location'))
-    console.log('DEBUG: LOGIN REQUEST BODY ->', authBody)
-    pushDebug('LOGIN REQUEST BODY -> ' + JSON.stringify(authBody))
-
     // Primary request using Axios (app uses authService.login)
     const response = await authService.login(credentials.value)
     
@@ -235,44 +171,8 @@ const handleLogin = async () => {
       error.value = response.data.message || 'Login failed'
     }
   } catch (err) {
-    // Log detailed error information
-    console.error('Login error (axios):', err)
-    pushDebug('ERROR: ' + (err.message || String(err)))
+    console.error('Login error:', err)
     
-    try {
-      console.log('Axios error response:', err.response)
-      if (err.response) {
-        pushDebug('Error status: ' + err.response.status)
-        pushDebug('Error data: ' + JSON.stringify(err.response.data))
-      }
-      if (err.response && err.response.data) console.log('Axios response data:', err.response.data)
-    } catch (e) {
-      console.warn('Could not read axios error response')
-      pushDebug('Could not read error response')
-    }
-
-    // Try a direct fetch as a comparison to see raw server response
-    try {
-      console.log('DEBUG: Attempting fetch() fallback to compare behavior')
-      pushDebug('Attempting fetch fallback to ' + authUrl)
-      const fetchRes = await fetch(authUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(authBody)
-      })
-      console.log('DEBUG: fetch status', fetchRes.status)
-      pushDebug('fetch status -> ' + fetchRes.status)
-      const text = await fetchRes.text()
-      console.log('DEBUG: fetch body', text)
-      pushDebug('fetch body -> ' + text.substring(0, 500))
-    } catch (fe) {
-      console.error('Fetch fallback error:', fe)
-      pushDebug('Fetch error: ' + (fe.message || String(fe)))
-    }
-
     // If the server responded with a 429 Too Many Attempts, give a clearer message
     if (err?.response?.status === 429) {
       const retryAfter = err.response.headers?.['retry-after'] || err.response.headers?.['Retry-After']
@@ -318,16 +218,26 @@ const handleForgotPassword = async () => {
 <style scoped>
 .login-page {
   min-height: 100vh;
+  height: 100vh;
   background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .login-container {
   width: 100%;
   max-width: 400px;
+  overflow-y: auto;
+  max-height: 100vh;
+  padding: 20px 0;
 }
 
 .login-header {
@@ -364,34 +274,6 @@ const handleForgotPassword = async () => {
   border-radius: 20px;
   padding: 32px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-}
-
-.debug-panel {
-  margin-top: 12px;
-  background: rgba(0,0,0,0.6);
-  color: #fff;
-  padding: 8px;
-  border-radius: 8px;
-}
-.debug-header {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:8px;
-}
-.debug-actions { display:flex; gap:8px }
-.debug-btn {
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  border: none;
-  padding: 6px 8px;
-  border-radius: 6px;
-}
-.debug-log {
-  max-height: 220px;
-  overflow: auto;
-  white-space: pre-wrap;
-  font-size: 12px;
 }
 
 .form-group {
