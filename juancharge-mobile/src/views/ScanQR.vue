@@ -7,17 +7,25 @@
 
     <div class="scanner-container">
       <div class="camera-frame">
-        <div class="scan-area">
+        <div class="scan-area" v-if="isScanning">
           <div class="corner top-left"></div>
           <div class="corner top-right"></div>
           <div class="corner bottom-left"></div>
           <div class="corner bottom-right"></div>
           <div class="scan-line"></div>
         </div>
-        <div class="camera-placeholder">
+        <!-- QR Reader renders camera here -->
+        <div id="qr-reader"></div>
+        <!-- Show placeholder only when NOT scanning and NO error -->
+        <div class="camera-placeholder" v-if="!isScanning && !scanError">
           <div class="camera-icon">📷</div>
-          <p>Camera will be displayed here</p>
-          <small>QR Scanner Integration</small>
+          <p>Initializing camera...</p>
+        </div>
+        <!-- Show error message if camera fails -->
+        <div class="camera-placeholder" v-if="scanError">
+          <div class="camera-icon">⚠️</div>
+          <p>{{ scanError }}</p>
+          <small>Please allow camera access</small>
         </div>
       </div>
     </div>
@@ -61,10 +69,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { Html5Qrcode } from 'html5-qrcode'
 
 const showManualEntry = ref(false)
 const manualCode = ref('')
+const isScanning = ref(false)
+const scanError = ref('')
+let html5QrCode = null
 
 const recentScans = ref([
   { id: 1, station: 'SM Mall Station', time: '2 hours ago' },
@@ -72,13 +84,80 @@ const recentScans = ref([
   { id: 3, station: 'Capitol Commons', time: '2 days ago' }
 ])
 
+const onScanSuccess = (decodedText, decodedResult) => {
+  console.log(`QR scanned: ${decodedText}`, decodedResult)
+  
+  recentScans.value.unshift({
+    id: Date.now(),
+    station: decodedText,
+    time: 'Just now'
+  })
+
+  alert(`QR Code Accepted: ${decodedText}`)
+}
+
+const onScanError = (errorMessage) => {
+  // Ignore frequent scan errors
+}
+
+const startScanning = async () => {
+  try {
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("qr-reader")
+    }
+    
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 350, height: 250 }
+      },
+      onScanSuccess,
+      onScanError
+    )
+    
+    isScanning.value = true
+    scanError.value = ''
+  } catch (err) {
+    console.error("Unable to start scanning", err)
+    scanError.value = "Camera access denied or unavailable"
+    isScanning.value = false
+  }
+}
+
+const stopScanning = async () => {
+  if (html5QrCode && isScanning.value) {
+    try {
+      await html5QrCode.stop()
+      isScanning.value = false
+    } catch (err) {
+      console.error("Error stopping scanner", err)
+    }
+  }
+}
+
 const submitCode = () => {
   if (manualCode.value.trim()) {
+    recentScans.value.unshift({
+      id: Date.now(),
+      station: manualCode.value,
+      time: 'Just now'
+    })
     alert(`Code submitted: ${manualCode.value}`)
     manualCode.value = ''
     showManualEntry.value = false
   }
 }
+
+// Auto-start camera when page loads
+onMounted(() => {
+  startScanning()
+})
+
+// Clean up when leaving page
+onBeforeUnmount(async () => {
+  await stopScanning()
+})
 </script>
 
 <style scoped>
@@ -122,13 +201,24 @@ const submitCode = () => {
   position: relative;
   width: 100%;
   aspect-ratio: 1;
-  max-width: 400px;
+  max-width: 300px;
   margin: 0 auto;
   background: #292929;
-  border-radius: 20px;
+  border-radius: 50px;
   overflow: hidden;
   box-shadow: 0 6px 20px rgba(0,0,0,0.15);
   border: 4px solid white;
+}
+
+#qr-reader {
+  width: 100%;
+  height: 100%;
+}
+
+#qr-reader video {
+  width: 100%;
+  height: 100%;
+  
 }
 
 .scan-area {
@@ -139,6 +229,7 @@ const submitCode = () => {
   width: 70%;
   height: 70%;
   z-index: 2;
+  pointer-events: none;
 }
 
 .corner {
@@ -184,7 +275,7 @@ const submitCode = () => {
   height: 3px;
   background: #7fdb9f;
   animation: scan 2s linear infinite;
-  box-shadow: 0 0 10px rgba(255, 199, 44, 0.5);
+  box-shadow: 0 0 10px rgba(127, 219, 159, 0.5);
 }
 
 @keyframes scan {
@@ -201,6 +292,7 @@ const submitCode = () => {
   justify-content: center;
   color: #666;
   z-index: 1;
+  background: #292929;
 }
 
 .camera-icon {
@@ -212,7 +304,7 @@ const submitCode = () => {
   background: white;
   padding: 20px;
   border-radius: 16px;
-  margin-bottom: 24px;
+  margin: 0 16px 24px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   border: 1px solid #eee;
 }
@@ -236,7 +328,8 @@ const submitCode = () => {
 }
 
 .manual-entry-btn {
-  width: 100%;
+  width: calc(100% - 32px);
+  margin: 0 16px 24px;
   padding: 16px;
   background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
   color: white;
@@ -245,7 +338,6 @@ const submitCode = () => {
   font-size: 16px;
   font-weight: 800;
   cursor: pointer;
-  margin-bottom: 24px;
   box-shadow: 0 6px 16px rgba(66, 184, 131, 0.3);
   transition: all 0.2s ease;
 }
@@ -258,7 +350,7 @@ const submitCode = () => {
 .manual-entry {
   display: flex;
   gap: 10px;
-  margin-bottom: 30px;
+  margin: 0 16px 30px;
 }
 
 .code-input {
@@ -273,7 +365,7 @@ const submitCode = () => {
 
 .code-input:focus {
   border-color: #7fdb9f;
-  box-shadow: 0 0 0 3px rgba(255, 199, 44, 0.1);
+  box-shadow: 0 0 0 3px rgba(127, 219, 159, 0.1);
 }
 
 .submit-btn {
@@ -284,13 +376,17 @@ const submitCode = () => {
   border-radius: 12px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(255, 199, 44, 0.3);
+  box-shadow: 0 4px 12px rgba(127, 219, 159, 0.3);
   transition: all 0.2s ease;
 }
 
 .submit-btn:active {
   transform: translateY(2px);
-  box-shadow: 0 2px 6px rgba(255, 199, 44, 0.3);
+  box-shadow: 0 2px 6px rgba(127, 219, 159, 0.3);
+}
+
+.recent-scans {
+  padding: 0 16px;
 }
 
 .recent-scans h3 {
@@ -328,7 +424,7 @@ const submitCode = () => {
   margin-right: 16px;
   font-weight: 800;
   font-size: 18px;
-  box-shadow: 0 4px 12px rgba(255, 199, 44, 0.3);
+  box-shadow: 0 4px 12px rgba(127, 219, 159, 0.3);
 }
 
 .scan-details {
@@ -346,5 +442,34 @@ const submitCode = () => {
   font-size: 13px;
   color: #666;
   font-weight: 500;
+}
+
+#qr-reader > div {
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Hide the default scan region box */
+#qr-reader__scan_region {
+  border: none !important;
+}
+
+/* Hide the default dashboard/UI elements */
+#qr-reader__dashboard,
+#qr-reader__dashboard_section,
+#qr-reader__dashboard_section_csr {
+  display: none !important;
+}
+
+/* Hide canvas overlay */
+#qr-reader canvas {
+  display: none !important;
+}
+
+/* Remove all borders and backgrounds from qr-reader children */
+#qr-reader * {
+  border: none !important;
+  outline: none !important;
 }
 </style>
