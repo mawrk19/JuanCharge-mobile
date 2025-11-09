@@ -3,7 +3,7 @@
     <div class="login-container">
       <!-- Logo/Header -->
       <div class="login-header">
-        <div class="logo">⚡</div>
+        <img src="/logo.png" alt="JuanCharge Logo" class="logo" />
         <h1>JuanCharge</h1>
         <p>Power your device, earn rewards</p>
       </div>
@@ -246,9 +246,12 @@ const handleForgotPassword = async () => {
 }
 
 .logo {
-  font-size: 80px;
-  margin-bottom: 16px;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 16px;
+  display: block;
   animation: pulse 2s infinite;
+  object-fit: contain;
 }
 
 @keyframes pulse {
