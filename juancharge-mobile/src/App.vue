@@ -7,7 +7,7 @@ const route = useRoute()
 
 // Hide navbar on login page
 const showNavbar = computed(() => {
-  return route.path !== '/login'
+  return route.path !== '/login' && route.path !== '/register'
 })
 </script>
 
