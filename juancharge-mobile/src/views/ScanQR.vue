@@ -1,8 +1,8 @@
 <template>
   <div class="scan-page">
     <div class="page-header">
-      <h1>📱 Scan QR Code</h1>
-      <p>Scan the QR code at the charging station</p>
+      <h1>⚡ Redeem Points</h1>
+      <p>{{ selectedKiosk ? selectedKiosk.kiosk_code : 'Select a station to charge' }}</p>
     </div>
 
     <div class="scanner-container">
@@ -30,39 +30,87 @@
       </div>
     </div>
 
-    <div class="scan-instructions">
-      <h3>How to scan:</h3>
-      <ol>
-        <li>Point your camera at the QR code</li>
-        <li>Keep the QR code within the frame</li>
-        <li>Wait for automatic detection</li>
-      </ol>
+    <!-- Active Session Already Exists -->
+    <div v-else-if="activeSession" class="active-session-alert">
+      <div class="alert-icon">⚡</div>
+      <h3>You have an active session</h3>
+      <p>Complete or cancel your current session first</p>
+      <div class="session-details">
+        <p><strong>Station:</strong> {{ activeSession.kiosk.kiosk_code }}</p>
+        <p><strong>Remaining:</strong> {{ getRemainingTime() }} minutes</p>
+      </div>
+      <button @click="cancelCurrentSession" class="cancel-btn" :disabled="cancelling">
+        {{ cancelling ? 'Cancelling...' : 'Cancel Session' }}
+      </button>
+      <button @click="$router.push('/')" class="back-btn">Go to Home</button>
     </div>
 
-    <button class="manual-entry-btn" @click="showManualEntry = !showManualEntry">
-      ✏️ Enter Code Manually
-    </button>
+    <!-- Redeem Points Form -->
+    <div v-else class="redeem-container">
+      <!-- Points Balance -->
+      <div class="balance-card">
+        <div class="balance-label">Available Points</div>
+        <div class="balance-value">{{ pointsBalance }}</div>
+      </div>
 
-    <div v-if="showManualEntry" class="manual-entry">
-      <input 
-        type="text" 
-        v-model="manualCode" 
-        placeholder="Enter station code"
-        class="code-input"
-      />
-      <button class="submit-btn" @click="submitCode">Submit</button>
-    </div>
-
-    <div class="recent-scans">
-      <h3>Recent Scans</h3>
-      <div class="scan-history">
-        <div class="scan-item" v-for="scan in recentScans" :key="scan.id">
-          <div class="scan-icon">✓</div>
-          <div class="scan-details">
-            <div class="scan-station">{{ scan.station }}</div>
-            <div class="scan-time">{{ scan.time }}</div>
-          </div>
+      <!-- Points Input -->
+      <div class="input-section">
+        <label>Points to Redeem</label>
+        <input 
+          type="number" 
+          v-model.number="pointsToRedeem" 
+          :min="MIN_POINTS"
+          :max="Math.min(MAX_POINTS, pointsBalance)"
+          placeholder="Enter points"
+          class="points-input"
+        />
+        <div class="range-hint">
+          Min: {{ MIN_POINTS }} • Max: {{ Math.min(MAX_POINTS, pointsBalance) }}
         </div>
+      </div>
+
+      <!-- Energy Preview -->
+      <div v-if="pointsToRedeem >= MIN_POINTS" class="preview-card">
+        <h3>⚡ Charging Preview</h3>
+        <div class="preview-item">
+          <span class="label">Duration:</span>
+          <span class="value">{{ pointsToRedeem }} minutes</span>
+        </div>
+        <div class="preview-item">
+          <span class="label">Energy:</span>
+          <span class="value">{{ formatEnergy(calculateEnergy(pointsToRedeem)) }}</span>
+        </div>
+        <div class="preview-item">
+          <span class="label">Station:</span>
+          <span class="value">{{ selectedKiosk.kiosk_code }}</span>
+        </div>
+      </div>
+
+      <!-- Error Message -->
+      <div v-if="error" class="error-message">
+        {{ error }}
+      </div>
+
+      <!-- Redeem Button -->
+      <button 
+        @click="redeemPoints" 
+        class="redeem-btn"
+        :disabled="!canRedeem || redeeming"
+      >
+        {{ redeeming ? 'Starting Session...' : 'Start Charging' }}
+      </button>
+
+      <!-- Quick Select Buttons -->
+      <div class="quick-select">
+        <button 
+          v-for="preset in presetPoints" 
+          :key="preset"
+          @click="pointsToRedeem = preset"
+          class="preset-btn"
+          :disabled="preset > pointsBalance"
+        >
+          {{ preset }} pts
+        </button>
       </div>
     </div>
   </div>
@@ -172,29 +220,30 @@ onBeforeUnmount(async () => {
 }
 
 .page-header {
-  background: linear-gradient(135deg, #42b883 0%, #7fdb9f 100%);
+  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
   text-align: center;
-  padding: 30px 16px 24px;
-  box-shadow: 0 4px 12px rgba(218, 41, 28, 0.2);
+  padding: 32px 20px;
+  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
 }
 
 .page-header h1 {
-  font-size: 1.8rem;
+  font-size: 28px;
   color: white;
   margin-bottom: 8px;
   font-weight: 800;
-  letter-spacing: -0.3px;
 }
 
 .page-header p {
   color: white;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 15px;
+  opacity: 0.95;
+  font-weight: 600;
 }
 
-.scanner-container {
-  padding: 16px;
-  margin-bottom: 24px;
+/* No Kiosk Selected */
+.no-kiosk {
+  text-align: center;
+  padding: 60px 20px;
 }
 
 .camera-frame {
@@ -244,25 +293,34 @@ onBeforeUnmount(async () => {
   border-bottom: none;
 }
 
-.corner.top-right {
-  top: 0;
-  right: 0;
-  border-left: none;
-  border-bottom: none;
+.no-kiosk p {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 24px;
+  font-weight: 600;
 }
 
-.corner.bottom-left {
-  bottom: 0;
-  left: 0;
-  border-right: none;
-  border-top: none;
+.select-btn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
 }
 
-.corner.bottom-right {
-  bottom: 0;
-  right: 0;
-  border-left: none;
-  border-top: none;
+/* Active Session Alert */
+.active-session-alert {
+  margin: 20px 16px;
+  padding: 24px;
+  background: white;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border: 2px solid #7fdb9f;
 }
 
 .scan-line {
@@ -276,26 +334,26 @@ onBeforeUnmount(async () => {
   box-shadow: 0 0 10px rgba(127, 219, 159, 0.5);
 }
 
-@keyframes scan {
-  0%, 100% { top: 0; }
-  50% { top: 100%; }
+.active-session-alert h3 {
+  font-size: 20px;
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 800;
 }
 
-.camera-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.active-session-alert > p {
+  font-size: 14px;
   color: #666;
   z-index: 1;
   background: #292929;
 }
 
-.camera-icon {
-  font-size: 4rem;
-  margin-bottom: 10px;
+.session-details {
+  background: #f8f8f8;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  text-align: left;
 }
 
 .scan-instructions {
@@ -307,22 +365,30 @@ onBeforeUnmount(async () => {
   border: 1px solid #eee;
 }
 
-.scan-instructions h3 {
-  color: #42b883;
-  margin-bottom: 15px;
-  font-size: 18px;
-  font-weight: 800;
+.session-details p:last-child {
+  margin-bottom: 0;
 }
 
-.scan-instructions ol {
-  margin: 0;
-  padding-left: 20px;
+.session-details strong {
   color: #333;
-  font-weight: 600;
 }
 
-.scan-instructions li {
-  margin-bottom: 8px;
+.cancel-btn {
+  width: 100%;
+  padding: 14px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .manual-entry-btn {
@@ -332,17 +398,17 @@ onBeforeUnmount(async () => {
   background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
   color: white;
   border: none;
-  border-radius: 16px;
-  font-size: 16px;
+  border-radius: 12px;
+  font-size: 15px;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(66, 184, 131, 0.3);
   transition: all 0.2s ease;
 }
 
-.manual-entry-btn:active {
-  transform: translateY(2px);
-  box-shadow: 0 3px 8px rgba(66, 184, 131, 0.3);
+/* Redeem Container */
+.redeem-container {
+  padding: 20px 16px;
 }
 
 .manual-entry {
@@ -351,13 +417,10 @@ onBeforeUnmount(async () => {
   margin: 0 16px 30px;
 }
 
-.code-input {
-  flex: 1;
-  padding: 14px 16px;
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  font-size: 16px;
-  outline: none;
+.balance-label {
+  font-size: 14px;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 8px;
   font-weight: 600;
 }
 
@@ -366,11 +429,19 @@ onBeforeUnmount(async () => {
   box-shadow: 0 0 0 3px rgba(127, 219, 159, 0.1);
 }
 
-.submit-btn {
-  padding: 14px 28px;
-  background: linear-gradient(135deg, #7fdb9f 0%, #5fc98e 100%);
+.input-section label {
+  display: block;
+  font-size: 15px;
   color: #333;
-  border: none;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.points-input {
+  width: 100%;
+  padding: 16px;
+  font-size: 18px;
+  border: 2px solid #7fdb9f;
   border-radius: 12px;
   font-weight: 800;
   cursor: pointer;
@@ -387,59 +458,114 @@ onBeforeUnmount(async () => {
   padding: 0 16px;
 }
 
-.recent-scans h3 {
-  font-size: 20px;
+.range-hint {
+  font-size: 13px;
+  color: #999;
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+/* Preview Card */
+.preview-card {
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 2px solid #7fdb9f;
+}
+
+.preview-card h3 {
+  font-size: 17px;
   color: #42b883;
   margin-bottom: 16px;
   font-weight: 800;
 }
 
-.scan-history {
+.preview-item {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.scan-item {
-  display: flex;
-  align-items: center;
-  padding: 16px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  border: 1px solid #f0f0f0;
+.preview-item:last-child {
+  border-bottom: none;
 }
 
-.scan-icon {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #7fdb9f 0%, #5fc98e 100%);
+.preview-item .label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+}
+
+.preview-item .value {
+  font-size: 14px;
   color: #333;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 16px;
   font-weight: 800;
   font-size: 18px;
   box-shadow: 0 4px 12px rgba(127, 219, 159, 0.3);
 }
 
-.scan-details {
-  flex: 1;
+/* Error Message */
+.error-message {
+  background: #fee;
+  color: #e74c3c;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
 }
 
-.scan-station {
-  font-weight: 700;
-  color: #333;
-  font-size: 15px;
-  margin-bottom: 4px;
+/* Redeem Button */
+.redeem-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
+  margin-bottom: 20px;
 }
 
-.scan-time {
-  font-size: 13px;
-  color: #666;
-  font-weight: 500;
+.redeem-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Quick Select */
+.quick-select {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.preset-btn {
+  padding: 12px;
+  background: white;
+  color: #42b883;
+  border: 2px solid #42b883;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.preset-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.preset-btn:not(:disabled):active {
+  background: #42b883;
+  color: white;
 }
 
 #qr-reader > div {

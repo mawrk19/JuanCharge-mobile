@@ -1,155 +1,212 @@
 <template>
   <div class="achievements-page">
     <div class="page-header">
-      <h1>🏆 Achievements</h1>
-      <p>Track your charging milestones</p>
+      <h1>🏆 Rewards</h1>
+      <p>Your charging points and history</p>
     </div>
 
-    <div class="points-summary">
-      <div class="total-points">
-        <div class="points-icon">⭐</div>
-        <div class="points-info">
-          <div class="points-value">{{ totalPoints }}</div>
-          <div class="points-label">Total Points</div>
+    <!-- Loading State -->
+    <div v-if="loading" class="loading-state">
+      <p>Loading rewards...</p>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="error-state">
+      <p>{{ error }}</p>
+      <button @click="fetchRewards">Retry</button>
+    </div>
+
+    <!-- Content -->
+    <template v-else>
+      <div class="points-summary">
+        <div class="total-points">
+          <div class="points-icon">⭐</div>
+          <div class="points-info">
+            <div class="points-value">{{ pointsBalance.points_balance }}</div>
+            <div class="points-label">Available Points</div>
+          </div>
+        </div>
+        <div class="level-badge">
+          <div class="badge-icon">⚡</div>
+          <div class="level-name">{{ formatEnergy(pointsBalance.available_energy_wh) }}</div>
         </div>
       </div>
-      <div class="level-badge">
-        <div class="badge-icon">🎖️</div>
-        <div class="level-name">Gold Member</div>
-      </div>
-    </div>
 
-    <div class="achievements-grid">
-      <div 
-        class="achievement-card" 
-        v-for="achievement in achievements" 
-        :key="achievement.id"
-        :class="{ unlocked: achievement.unlocked }"
-      >
-        <div class="achievement-icon">{{ achievement.icon }}</div>
-        <div class="achievement-info">
-          <div class="achievement-name">{{ achievement.name }}</div>
-          <div class="achievement-description">{{ achievement.description }}</div>
-          <div class="achievement-progress">
-            <div class="progress-bar">
-              <div 
-                class="progress-fill" 
-                :style="{ width: achievement.progress + '%' }"
-              ></div>
+      <!-- Points Stats -->
+      <div class="stats-cards">
+        <div class="stat-item">
+          <div class="stat-label">Total Earned</div>
+          <div class="stat-value">{{ pointsBalance.total_earned }}</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Total Redeemed</div>
+          <div class="stat-value">{{ pointsBalance.total_redeemed }}</div>
+        </div>
+      </div>
+
+      <!-- Charging History Section -->
+      <div class="challenges-section">
+        <h2>⚡ Charging History</h2>
+        
+        <div v-if="chargingHistory.length === 0" class="empty-state">
+          <p>No charging history yet</p>
+        </div>
+        
+        <div class="challenge-list">
+          <div 
+            class="challenge-item" 
+            v-for="session in chargingHistory" 
+            :key="session.session_id"
+          >
+            <div class="challenge-icon">
+              {{ session.status === 'completed' ? '✓' : session.status === 'cancelled' ? '✗' : '⏱' }}
             </div>
-            <div class="progress-text">{{ achievement.progress }}%</div>
-          </div>
-          <div class="achievement-reward" v-if="achievement.unlocked">
-            +{{ achievement.points }} points
+            <div class="challenge-details">
+              <div class="challenge-name">{{ session.kiosk.kiosk_code }}</div>
+              <div class="challenge-reward">
+                {{ session.duration_minutes }} min • {{ session.energy_wh }} Wh
+              </div>
+              <div class="challenge-time">{{ formatDate(session.start_time) }}</div>
+            </div>
+            <div 
+              class="challenge-status" 
+              :class="session.status"
+            >
+              {{ getStatusLabel(session.status) }}
+            </div>
           </div>
         </div>
-        <div class="unlock-badge" v-if="achievement.unlocked">✓</div>
-      </div>
-    </div>
 
-    <div class="challenges-section">
-      <h2>🎯 Daily Challenges</h2>
-      <div class="challenge-list">
-        <div class="challenge-item" v-for="challenge in challenges" :key="challenge.id">
-          <div class="challenge-icon">{{ challenge.icon }}</div>
-          <div class="challenge-details">
-            <div class="challenge-name">{{ challenge.name }}</div>
-            <div class="challenge-reward">+{{ challenge.reward }} pts</div>
-          </div>
-          <div class="challenge-status" :class="challenge.completed ? 'completed' : 'active'">
-            {{ challenge.completed ? 'Done' : 'Active' }}
-          </div>
-        </div>
+        <!-- Load More Button -->
+        <button 
+          v-if="canLoadMore" 
+          @click="loadMoreHistory" 
+          class="load-more-btn"
+          :disabled="loadingMore"
+        >
+          {{ loadingMore ? 'Loading...' : 'Load More' }}
+        </button>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
+import { pointsService, chargingService } from '@/services/apiServices'
+import { formatEnergy } from '@/services/apiConstants'
 
-const totalPoints = ref(1245)
+const pointsBalance = ref({
+  points_balance: 0,
+  total_earned: 0,
+  total_redeemed: 0,
+  available_energy_wh: 0
+})
 
-const achievements = ref([
-  {
-    id: 1,
-    name: 'First Charge',
-    description: 'Complete your first charging session',
-    icon: '⚡',
-    points: 50,
-    progress: 100,
-    unlocked: true
-  },
-  {
-    id: 2,
-    name: 'Eco Warrior',
-    description: 'Charge 10 times in a month',
-    icon: '🌱',
-    points: 100,
-    progress: 100,
-    unlocked: true
-  },
-  {
-    id: 3,
-    name: 'Station Explorer',
-    description: 'Use 5 different charging stations',
-    icon: '🗺️',
-    points: 150,
-    progress: 80,
-    unlocked: false
-  },
-  {
-    id: 4,
-    name: 'Night Owl',
-    description: 'Charge during off-peak hours 5 times',
-    icon: '🦉',
-    points: 75,
-    progress: 60,
-    unlocked: false
-  },
-  {
-    id: 5,
-    name: 'Speed Demon',
-    description: 'Use fast charging 3 times',
-    icon: '⚡',
-    points: 120,
-    progress: 33,
-    unlocked: false
-  },
-  {
-    id: 6,
-    name: 'Green Champion',
-    description: 'Charge 50 times total',
-    icon: '🏆',
-    points: 500,
-    progress: 30,
-    unlocked: false
+const chargingHistory = ref([])
+const loading = ref(true)
+const loadingMore = ref(false)
+const error = ref(null)
+const currentPage = ref(1)
+const lastPage = ref(1)
+
+// Can load more history
+const canLoadMore = ref(false)
+
+// Fetch rewards data
+const fetchRewards = async () => {
+  loading.value = true
+  error.value = null
+  
+  try {
+    const [balanceResponse, historyResponse] = await Promise.all([
+      pointsService.getBalance(),
+      chargingService.getHistory({ per_page: 10, page: 1 })
+    ])
+    
+    pointsBalance.value = balanceResponse.data.data
+    chargingHistory.value = historyResponse.data.data
+    
+    // Update pagination info
+    if (historyResponse.data.pagination) {
+      currentPage.value = historyResponse.data.pagination.current_page
+      lastPage.value = historyResponse.data.pagination.last_page
+      canLoadMore.value = currentPage.value < lastPage.value
+    }
+  } catch (err) {
+    console.error('Rewards error:', err)
+    error.value = err.response?.data?.message || 'Failed to load rewards'
+    
+    if (err.response?.status === 401) {
+      localStorage.removeItem('auth_token')
+      router.push('/login')
+    }
+  } finally {
+    loading.value = false
   }
-])
+}
 
-const challenges = ref([
-  {
-    id: 1,
-    name: 'Charge Today',
-    icon: '⚡',
-    reward: 25,
-    completed: true
-  },
-  {
-    id: 2,
-    name: 'Visit New Station',
-    icon: '📍',
-    reward: 50,
-    completed: false
-  },
-  {
-    id: 3,
-    name: 'Share with Friends',
-    icon: '👥',
-    reward: 30,
-    completed: false
+// Load more charging history
+const loadMoreHistory = async () => {
+  if (loadingMore.value || !canLoadMore.value) return
+  
+  loadingMore.value = true
+  
+  try {
+    const nextPage = currentPage.value + 1
+    const response = await chargingService.getHistory({ 
+      per_page: 10, 
+      page: nextPage 
+    })
+    
+    // Append new history items
+    chargingHistory.value.push(...response.data.data)
+    
+    // Update pagination
+    if (response.data.pagination) {
+      currentPage.value = response.data.pagination.current_page
+      lastPage.value = response.data.pagination.last_page
+      canLoadMore.value = currentPage.value < lastPage.value
+    }
+  } catch (err) {
+    console.error('Load more error:', err)
+  } finally {
+    loadingMore.value = false
   }
-])
+}
+
+// Get status label
+const getStatusLabel = (status) => {
+  return {
+    'active': 'Active',
+    'completed': 'Completed',
+    'cancelled': 'Cancelled'
+  }[status] || status
+}
+
+// Format date
+const formatDate = (dateString) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  
+  if (diffMins < 60) return `${diffMins} min ago`
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+  
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  })
+}
+
+onMounted(() => {
+  fetchRewards()
+})
 </script>
 
 <style scoped>
@@ -358,6 +415,7 @@ const challenges = ref([
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-bottom: 16px;
 }
 
 .challenge-item {
@@ -373,6 +431,8 @@ const challenges = ref([
 .challenge-icon {
   font-size: 32px;
   margin-right: 16px;
+  min-width: 40px;
+  text-align: center;
 }
 
 .challenge-details {
@@ -390,6 +450,13 @@ const challenges = ref([
   font-size: 13px;
   color: #42b883;
   font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.challenge-time {
+  font-size: 12px;
+  color: #999;
+  font-weight: 600;
 }
 
 .challenge-status {
@@ -397,16 +464,115 @@ const challenges = ref([
   border-radius: 12px;
   font-size: 13px;
   font-weight: 800;
+  text-transform: capitalize;
 }
 
 .challenge-status.completed {
   background: linear-gradient(135deg, #7fdb9f 0%, #5fc98e 100%);
   color: #333;
-  box-shadow: 0 2px 8px rgba(255, 199, 44, 0.3);
+  box-shadow: 0 2px 8px rgba(127, 219, 159, 0.3);
 }
 
 .challenge-status.active {
+  background: #42b883;
+  color: white;
+}
+
+.challenge-status.cancelled {
   background: #f0f0f0;
   color: #666;
+}
+
+/* Stats Cards */
+.stats-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0 16px 24px;
+}
+
+.stat-item {
+  padding: 16px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid #f0f0f0;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 24px;
+  color: #42b883;
+  font-weight: 800;
+}
+
+/* Loading/Error States */
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.loading-state p {
+  font-size: 16px;
+  color: #666;
+  font-weight: 600;
+}
+
+.error-state p {
+  font-size: 16px;
+  color: #e74c3c;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.error-state button {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-size: 14px;
+}
+
+/* Load More Button */
+.load-more-btn {
+  width: 100%;
+  padding: 14px;
+  background: white;
+  color: #42b883;
+  border: 2px solid #42b883;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 12px;
+}
+
+.load-more-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.load-more-btn:not(:disabled):hover {
+  background: #42b883;
+  color: white;
 }
 </style>

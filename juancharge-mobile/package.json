@@ -6,11 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:emulator": "CAPACITOR_SERVER_URL=http://10.0.2.2:3001 npm run build && npx cap sync android && cd android && ./gradlew installDebug",
+    "start:emulator": "npm run dev -- --host"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
     "@capacitor/core": "^7.4.4",
+    "@capacitor/preferences": "^7.0.2",
     "@vueuse/core": "^14.0.0",
     "axios": "^1.13.2",
     "lucide-vue-next": "^0.552.0",
