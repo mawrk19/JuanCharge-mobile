@@ -11,13 +11,23 @@
         <header class="login-form-header">Create Account</header>
         <form @submit.prevent="handleRegister">
           <div class="form-group">
-            <label>Full Name</label>
-            <input v-model="form.name" type="text" placeholder="Enter your full name" required :disabled="loading" />
+            <label>First Name</label>
+            <input v-model="form.first_name" type="text" placeholder="Enter your first name" required :disabled="loading" />
+          </div>
+
+           <div class="form-group">
+            <label>Last Name</label>
+            <input v-model="form.last_name" type="text" placeholder="Enter your last name" required :disabled="loading" />
           </div>
 
           <div class="form-group">
             <label>Email</label>
             <input v-model="form.email" type="email" placeholder="Enter your email" required :disabled="loading" />
+          </div>
+
+          <div class="form-group">
+            <label>Contact No. <span class="optional-label">(Optional)</span></label>
+            <input v-model="form.contact" type="number" placeholder="Enter your contact number" :disabled="loading" />
           </div>
 
           <div class="form-group">
@@ -74,8 +84,10 @@ import { authService } from '@/services/apiServices'
 const router = useRouter()
 
 const form = reactive({
-  name: '',
+  first_name: '',
+  last_name: '',
   email: '',
+  contact: '',
   password: '',
   password_confirmation: ''
 })
@@ -477,5 +489,23 @@ const handleRegister = async () => {
   justify-content: center;
   transition: color 0.2s;
   outline: none;
+}
+
+.optional-label {
+  font-size: 11px;
+  font-style: italic;
+  font-weight: 400;
+  color: #999;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 </style>
