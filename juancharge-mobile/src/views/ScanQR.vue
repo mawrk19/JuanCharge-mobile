@@ -5,13 +5,29 @@
       <p>{{ selectedKiosk ? selectedKiosk.kiosk_code : 'Select a station to charge' }}</p>
     </div>
 
-    <!-- No Kiosk Selected -->
-    <div v-if="!selectedKiosk" class="no-kiosk">
-      <div class="icon">📍</div>
-      <p>No charging station selected</p>
-      <button @click="$router.push('/map')" class="select-btn">
-        Select Station
-      </button>
+    <div class="scanner-container">
+      <div class="camera-frame">
+        <div class="scan-area" v-if="isScanning">
+          <div class="corner top-left"></div>
+          <div class="corner top-right"></div>
+          <div class="corner bottom-left"></div>
+          <div class="corner bottom-right"></div>
+          <div class="scan-line"></div>
+        </div>
+        <!-- QR Reader renders camera here -->
+        <div id="qr-reader"></div>
+        <!-- Show placeholder only when NOT scanning and NO error -->
+        <div class="camera-placeholder" v-if="!isScanning && !scanError">
+          <div class="camera-icon">📷</div>
+          <p>Initializing camera...</p>
+        </div>
+        <!-- Show error message if camera fails -->
+        <div class="camera-placeholder" v-if="scanError">
+          <div class="camera-icon">⚠️</div>
+          <p>{{ scanError }}</p>
+          <small>Please allow camera access</small>
+        </div>
+      </div>
     </div>
 
     <!-- Active Session Already Exists -->
@@ -101,121 +117,94 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { chargingService, pointsService } from '@/services/apiServices'
-import { 
-  API_CONSTANTS, 
-  calculateEnergy, 
-  formatEnergy 
-} from '@/services/apiConstants'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { Html5Qrcode } from 'html5-qrcode'
 
-const router = useRouter()
+const showManualEntry = ref(false)
+const manualCode = ref('')
+const isScanning = ref(false)
+const scanError = ref('')
+let html5QrCode = null
 
-const MIN_POINTS = API_CONSTANTS.MIN_POINTS_PER_SESSION
-const MAX_POINTS = API_CONSTANTS.MAX_POINTS_PER_SESSION
+const recentScans = ref([
+  { id: 1, station: 'SM Mall Station', time: '2 hours ago' },
+  { id: 2, station: 'Ayala Center', time: 'Yesterday' },
+  { id: 3, station: 'Capitol Commons', time: '2 days ago' }
+])
 
-const selectedKiosk = ref(null)
-const pointsBalance = ref(0)
-const pointsToRedeem = ref(MIN_POINTS)
-const activeSession = ref(null)
-const error = ref(null)
-const redeeming = ref(false)
-const cancelling = ref(false)
+const onScanSuccess = (decodedText, decodedResult) => {
+  console.log(`QR scanned: ${decodedText}`, decodedResult)
+  
+  recentScans.value.unshift({
+    id: Date.now(),
+    station: decodedText,
+    time: 'Just now'
+  })
 
-const presetPoints = [10, 30, 60, 120]
+  alert(`QR Code Accepted: ${decodedText}`)
+}
 
-// Can redeem check
-const canRedeem = computed(() => {
-  return pointsToRedeem.value >= MIN_POINTS &&
-         pointsToRedeem.value <= MAX_POINTS &&
-         pointsToRedeem.value <= pointsBalance.value &&
-         selectedKiosk.value &&
-         !activeSession.value
+const onScanError = (errorMessage) => {
+  // Ignore frequent scan errors
+}
+
+const startScanning = async () => {
+  try {
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("qr-reader")
+    }
+    
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 350, height: 250 }
+      },
+      onScanSuccess,
+      onScanError
+    )
+    
+    isScanning.value = true
+    scanError.value = ''
+  } catch (err) {
+    console.error("Unable to start scanning", err)
+    scanError.value = "Camera access denied or unavailable"
+    isScanning.value = false
+  }
+}
+
+const stopScanning = async () => {
+  if (html5QrCode && isScanning.value) {
+    try {
+      await html5QrCode.stop()
+      isScanning.value = false
+    } catch (err) {
+      console.error("Error stopping scanner", err)
+    }
+  }
+}
+
+const submitCode = () => {
+  if (manualCode.value.trim()) {
+    recentScans.value.unshift({
+      id: Date.now(),
+      station: manualCode.value,
+      time: 'Just now'
+    })
+    alert(`Code submitted: ${manualCode.value}`)
+    manualCode.value = ''
+    showManualEntry.value = false
+  }
+}
+
+// Auto-start camera when page loads
+onMounted(() => {
+  startScanning()
 })
 
-// Get remaining time for active session
-const getRemainingTime = () => {
-  if (!activeSession.value) return 0
-  const remaining = activeSession.value.remaining_minutes || 0
-  return Math.max(0, Math.round(remaining))
-}
-
-// Fetch initial data
-const fetchData = async () => {
-  try {
-    // Get selected kiosk from sessionStorage
-    const kioskData = sessionStorage.getItem('selectedKiosk')
-    if (kioskData) {
-      selectedKiosk.value = JSON.parse(kioskData)
-    }
-
-    // Fetch points balance and active session
-    const [balanceResponse, sessionResponse] = await Promise.all([
-      pointsService.getBalance(),
-      chargingService.getActiveSession()
-    ])
-
-    pointsBalance.value = balanceResponse.data.data.points_balance
-    
-    if (sessionResponse.data.data) {
-      activeSession.value = sessionResponse.data.data
-    }
-  } catch (err) {
-    console.error('Fetch data error:', err)
-    if (err.response?.status === 401) {
-      localStorage.removeItem('auth_token')
-      router.push('/login')
-    }
-  }
-}
-
-// Redeem points and start charging
-const redeemPoints = async () => {
-  if (!canRedeem.value) return
-
-  error.value = null
-  redeeming.value = true
-
-  try {
-    const response = await chargingService.redeemPoints({
-      kiosk_id: selectedKiosk.value.kiosk_id,
-      points: pointsToRedeem.value
-    })
-
-    // Success - redirect to home
-    alert('Charging session started successfully!')
-    sessionStorage.removeItem('selectedKiosk')
-    router.push('/')
-  } catch (err) {
-    console.error('Redeem error:', err)
-    error.value = err.response?.data?.message || 'Failed to start charging session'
-  } finally {
-    redeeming.value = false
-  }
-}
-
-// Cancel current session
-const cancelCurrentSession = async () => {
-  if (!activeSession.value) return
-
-  cancelling.value = true
-
-  try {
-    await chargingService.cancelSession(activeSession.value.session_id)
-    alert('Session cancelled successfully')
-    activeSession.value = null
-    await fetchData()
-  } catch (err) {
-    console.error('Cancel error:', err)
-    alert(err.response?.data?.message || 'Failed to cancel session')
-  } finally {
-    cancelling.value = false
-  }
-}
-
-onMounted(() => {
-  fetchData()
+// Clean up when leaving page
+onBeforeUnmount(async () => {
+  await stopScanning()
 })
 </script>
 
@@ -257,9 +246,51 @@ onMounted(() => {
   padding: 60px 20px;
 }
 
-.no-kiosk .icon {
-  font-size: 80px;
-  margin-bottom: 20px;
+.camera-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 270px;
+  margin: 0 auto;
+  border-radius: 50px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  border: 4px solid white;
+}
+
+#qr-reader {
+  width:  350px;
+  height:  350px;
+}
+
+#qr-reader video {
+  width: 350px;
+  height:  350px;
+}
+
+.scan-area {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  height: 70%;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 4px solid #7fdb9f;
+}
+
+.corner.top-left {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
 }
 
 .no-kiosk p {
@@ -292,9 +323,15 @@ onMounted(() => {
   border: 2px solid #7fdb9f;
 }
 
-.alert-icon {
-  font-size: 60px;
-  margin-bottom: 16px;
+.scan-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #7fdb9f;
+  animation: scan 2s linear infinite;
+  box-shadow: 0 0 10px rgba(127, 219, 159, 0.5);
 }
 
 .active-session-alert h3 {
@@ -307,7 +344,8 @@ onMounted(() => {
 .active-session-alert > p {
   font-size: 14px;
   color: #666;
-  margin-bottom: 20px;
+  z-index: 1;
+  background: #292929;
 }
 
 .session-details {
@@ -318,11 +356,13 @@ onMounted(() => {
   text-align: left;
 }
 
-.session-details p {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 8px;
-  font-weight: 600;
+.scan-instructions {
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  margin: 0 16px 24px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border: 1px solid #eee;
 }
 
 .session-details p:last-child {
@@ -351,16 +391,19 @@ onMounted(() => {
   cursor: not-allowed;
 }
 
-.back-btn {
-  width: 100%;
-  padding: 14px;
-  background: #f0f0f0;
-  color: #333;
+.manual-entry-btn {
+  width: calc(100% - 32px);
+  margin: 0 16px 24px;
+  padding: 16px;
+  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
+  color: white;
   border: none;
   border-radius: 12px;
   font-size: 15px;
   font-weight: 800;
   cursor: pointer;
+  box-shadow: 0 6px 16px rgba(66, 184, 131, 0.3);
+  transition: all 0.2s ease;
 }
 
 /* Redeem Container */
@@ -368,13 +411,10 @@ onMounted(() => {
   padding: 20px 16px;
 }
 
-.balance-card {
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
-  padding: 24px;
-  border-radius: 16px;
-  text-align: center;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
+.manual-entry {
+  display: flex;
+  gap: 10px;
+  margin: 0 16px 30px;
 }
 
 .balance-label {
@@ -384,15 +424,9 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.balance-value {
-  font-size: 42px;
-  color: white;
-  font-weight: 800;
-}
-
-/* Input Section */
-.input-section {
-  margin-bottom: 24px;
+.code-input:focus {
+  border-color: #7fdb9f;
+  box-shadow: 0 0 0 3px rgba(127, 219, 159, 0.1);
 }
 
 .input-section label {
@@ -409,13 +443,19 @@ onMounted(() => {
   font-size: 18px;
   border: 2px solid #7fdb9f;
   border-radius: 12px;
-  font-weight: 700;
-  box-sizing: border-box;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(127, 219, 159, 0.3);
+  transition: all 0.2s ease;
 }
 
-.points-input:focus {
-  outline: none;
-  border-color: #42b883;
+.submit-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 6px rgba(127, 219, 159, 0.3);
+}
+
+.recent-scans {
+  padding: 0 16px;
 }
 
 .range-hint {
@@ -463,6 +503,8 @@ onMounted(() => {
   font-size: 14px;
   color: #333;
   font-weight: 800;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(127, 219, 159, 0.3);
 }
 
 /* Error Message */
@@ -524,5 +566,34 @@ onMounted(() => {
 .preset-btn:not(:disabled):active {
   background: #42b883;
   color: white;
+}
+
+#qr-reader > div {
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Hide the default scan region box */
+#qr-reader__scan_region {
+  border: none !important;
+}
+
+/* Hide the default dashboard/UI elements */
+#qr-reader__dashboard,
+#qr-reader__dashboard_section,
+#qr-reader__dashboard_section_csr {
+  display: none !important;
+}
+
+/* Hide canvas overlay */
+#qr-reader canvas {
+  display: none !important;
+}
+
+/* Remove all borders and backgrounds from qr-reader children */
+#qr-reader * {
+  border: none !important;
+  outline: none !important;
 }
 </style>
