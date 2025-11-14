@@ -5,32 +5,31 @@
       <div class="login-header">
         <img src="/logo.png" alt="JuanCharge Logo" class="logo" />
         <h1>JuanCharge</h1>
-        <p>Power your device, earn rewards</p>
+        <p>Powering every Juan</p>
       </div>
 
       <!-- Login Form -->
       <div class="login-form">
+        <header class="login-form-header">Login</header>
         <form @submit.prevent="handleLogin">
           <div class="form-group">
             <label>Email</label>
-            <input 
-              v-model="credentials.email" 
-              type="email" 
-              placeholder="Enter your email"
-              required
-              :disabled="loading"
-            />
+            <input v-model="credentials.email" type="email" placeholder="Enter your email" required
+              :disabled="loading" />
           </div>
 
           <div class="form-group">
             <label>Password</label>
-            <input 
-              v-model="credentials.password" 
-              type="password" 
-              placeholder="Enter your password"
-              required
-              :disabled="loading"
-            />
+            <div class="password-input-wrapper">
+              <input v-model="credentials.password" :type="showPassword ? 'text' : 'password'"
+                placeholder="Enter your password" required :disabled="loading">
+              <button type="button" class="toggle-password" @click="showPassword = !showPassword" :disabled="loading">
+                <span class="material-icons">
+                  {{ showPassword ? 'visibility_off' : 'visibility' }}
+                </span>
+              </button>
+              </input>
+            </div>
           </div>
 
           <!-- Error Message -->
@@ -39,11 +38,7 @@
           </div>
 
           <!-- Login Button -->
-          <button 
-            type="submit" 
-            class="login-btn"
-            :disabled="loading"
-          >
+          <button type="submit" class="login-btn" :disabled="loading">
             {{ loading ? 'Logging in...' : 'Login' }}
           </button>
         </form>
@@ -57,8 +52,8 @@
 
         <!-- Register Link -->
         <div class="register-link">
-          Don't have an account? 
-          <router-link to="/register">Register</router-link>
+          Don't have an account?
+          <router-link to="/register">Create Account</router-link>
         </div>
       </div>
 
@@ -75,16 +70,11 @@
         <p class="modal-description">
           Enter your email address and we'll send you a password reset link.
         </p>
-        
+
         <form @submit.prevent="handleForgotPassword">
           <div class="form-group">
             <label>Email</label>
-            <input 
-              v-model="forgotEmail" 
-              type="email" 
-              placeholder="Enter your email"
-              required
-            />
+            <input v-model="forgotEmail" type="email" placeholder="Enter your email" required />
           </div>
 
           <div v-if="forgotError" class="error-message">
@@ -96,18 +86,10 @@
           </div>
 
           <div class="modal-actions">
-            <button 
-              type="button" 
-              @click="showForgotPassword = false" 
-              class="cancel-btn"
-            >
+            <button type="button" @click="showForgotPassword = false" class="cancel-btn">
               Cancel
             </button>
-            <button 
-              type="submit" 
-              class="submit-btn"
-              :disabled="sendingReset"
-            >
+            <button type="submit" class="submit-btn" :disabled="sendingReset">
               {{ sendingReset ? 'Sending...' : 'Send Reset Link' }}
             </button>
           </div>
@@ -134,6 +116,11 @@ const credentials = ref({
 const loading = ref(false)
 const error = ref(null)
 
+//Toggle Password Visibility
+
+const showPassword = ref(false)
+
+
 // Forgot password
 const showForgotPassword = ref(false)
 const forgotEmail = ref('')
@@ -149,16 +136,16 @@ const handleLogin = async () => {
   try {
     // Primary request using Axios (app uses authService.login)
     const response = await authService.login(credentials.value)
-    
+
     if (response.data.success) {
       // Store tokens securely using Capacitor Preferences
       await secureStorage.setDeviceToken(response.data.device_token)
       await secureStorage.setApiToken(response.data.api_token)
       await secureStorage.setUserData(response.data.user)
       await secureStorage.setTokenExpiresAt(response.data.token_expires_at)
-      
+
       console.log('✅ Login successful - tokens stored securely')
-      
+
       // Check if profile update is needed
       if (response.data.should_update_profile) {
         alert(response.data.prompt_message || 'Please complete your profile.')
@@ -172,7 +159,7 @@ const handleLogin = async () => {
     }
   } catch (err) {
     console.error('Login error:', err)
-    
+
     // If the server responded with a 429 Too Many Attempts, give a clearer message
     if (err?.response?.status === 429) {
       const retryAfter = err.response.headers?.['retry-after'] || err.response.headers?.['Retry-After']
@@ -193,11 +180,11 @@ const handleForgotPassword = async () => {
 
   try {
     const response = await authService.forgotPassword({ email: forgotEmail.value })
-    
+
     if (response.data.success) {
       forgotSuccess.value = response.data.message
       forgotEmail.value = ''
-      
+
       // Close modal after 3 seconds
       setTimeout(() => {
         showForgotPassword.value = false
@@ -258,14 +245,20 @@ const handleForgotPassword = async () => {
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 .login-header h1 {
   font-size: 36px;
   color: white;
-  margin-bottom: 8px;
   font-weight: 800;
 }
 
@@ -273,6 +266,14 @@ const handleForgotPassword = async () => {
   font-size: 16px;
   color: rgba(255, 255, 255, 0.9);
   font-weight: 600;
+}
+
+.login-form-header {
+  font-size: 24px;
+  color: #333;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 12px;
 }
 
 .login-form {
@@ -302,12 +303,12 @@ const handleForgotPassword = async () => {
   padding: 14px;
   border: none;
   border-radius: 12px;
-  color:#333;
+  color: #333;
   font-size: 13px;
   font-weight: normal;
   transition: all 0.3s;
   box-sizing: border-box;
-  background-color:#ffffff;
+  background-color: #ffffff;
   box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px, rgba(0, 0, 0, 0.24) 0px 1px 2px;
 }
 
@@ -473,5 +474,33 @@ const handleForgotPassword = async () => {
 .submit-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  padding-right: 45px;
+  /* Make space for the button */
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #333;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  outline: none;
 }
 </style>
