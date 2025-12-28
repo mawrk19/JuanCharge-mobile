@@ -1,321 +1,437 @@
 <template>
   <div class="map-page">
-    <div class="page-header">
-      <h1>🗺️ Charging Stations Map</h1>
+    <!-- Header Section -->
+    <div class="header-section">
+      <h1 class="page-title">Nearby Charging Stations</h1>
+      <p class="page-subtitle">Find JuanCharge kiosks near you</p>
     </div>
 
-    <div class="search-bar">
-      <input 
-        type="text" 
-        placeholder="Search stations..." 
-        v-model="searchQuery"
-        @input="filterStations"
-      />
-      <button class="search-btn" @click="fetchKiosks">🔍</button>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <p>Loading stations...</p>
-    </div>
-
-    <!-- Error State -->
-    <div v-else-if="error" class="error-state">
-      <p>{{ error }}</p>
-      <button @click="fetchKiosks">Retry</button>
-    </div>
-
-    <!-- Content -->
-    <template v-else>
-      <div class="map-container">
-        <div class="map-placeholder">
-          <div class="map-icon">📍</div>
-          <p>{{ kiosks.length }} station{{ kiosks.length !== 1 ? 's' : '' }} found</p>
-          <small>Map integration coming soon</small>
-        </div>
-      </div>
-
-      <div class="stations-list">
-        <h2>Available Stations ({{ filteredKiosks.length }})</h2>
-        
-        <div v-if="filteredKiosks.length === 0" class="empty-state">
-          <p>No stations found</p>
-        </div>
-        
-        <div 
-          v-for="kiosk in filteredKiosks" 
-          :key="kiosk.id" 
-          class="station-card"
-        >
-          <div class="station-info">
-            <div class="station-name">{{ kiosk.kiosk_code }}</div>
-            <div class="station-distance">{{ kiosk.location }}</div>
-            <div 
-              class="station-status" 
-              :class="getStatusClass(kiosk.status)"
-            >
-              {{ getStatusLabel(kiosk.status) }}
-            </div>
-          </div>
-          <button 
-            class="navigate-btn" 
-            @click="navigateToKiosk(kiosk)"
-            :disabled="kiosk.status !== 'active'"
+    <!-- Map Container -->
+    <div class="map-wrapper">
+      <div id="map" class="map-container">
+        <!-- Floating controls for Map (Overlayed) -->
+        <div class="map-controls">
+          <button
+            class="control-btn location-btn shadow"
+            @click="focusUserLocation"
           >
-            {{ kiosk.status === 'active' ? 'Start Charging' : 'Unavailable' }}
+            <span class="material-icons">my_location</span>
           </button>
         </div>
       </div>
-    </template>
+    </div>
+
+    <!-- Station List Section -->
+    <div class="stations-section">
+      <div v-if="loading" class="loading-state">
+        <p>Loading stations...</p>
+      </div>
+
+      <div v-else-if="error" class="error-state">
+        <p>{{ error }}</p>
+        <button class="retry-btn" @click="fetchKiosks">Retry Search</button>
+      </div>
+
+      <template v-else>
+        <h2 class="list-title">All Stations ({{ kiosks.length }})</h2>
+
+        <div class="stations-list">
+          <div
+            v-for="kiosk in kiosks"
+            :key="kiosk.id"
+            class="station-card"
+            :class="getBorderClass(kiosk)"
+          >
+            <div class="card-body">
+              <h3 class="station-name">{{ kiosk.name }}</h3>
+              <div class="info-row">
+                <span class="material-icons info-icon">location_on</span>
+                <span class="info-text">{{ kiosk.address }}</span>
+              </div>
+              <div class="stats-row">
+                <div class="info-row">
+                  <span class="material-icons info-icon rotate-45"
+                    >navigation</span
+                  >
+                  <span class="info-text">{{ kiosk.distance }}</span>
+                </div>
+                <div class="info-row">
+                  <span class="material-icons info-icon"
+                    >battery_charging_full</span
+                  >
+                  <span class="info-text"
+                    >{{ kiosk.available }}/{{ kiosk.total }} available</span
+                  >
+                </div>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button
+                class="action-btn details-btn"
+                @click="handleAction('details', kiosk)"
+              >
+                <span class="material-icons small-icon">info</span>
+                Details
+              </button>
+              <button
+                class="action-btn directions-btn"
+                @click="handleAction('directions', kiosk)"
+              >
+                <span class="material-icons small-icon">near_me</span>
+                Directions
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { kioskService } from '@/services/apiServices'
-import { API_CONSTANTS } from '@/services/apiConstants'
+import { ref, onMounted, nextTick } from "vue";
+import { useRouter } from "vue-router";
+import { kioskService } from "@/services/apiServices";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
-const router = useRouter()
+const router = useRouter();
 
-const searchQuery = ref('')
-const kiosks = ref([])
-const loading = ref(true)
-const error = ref(null)
+const kiosks = ref([]);
+const loading = ref(false);
+const error = ref(null);
+let map = null;
+const markers = [];
 
-// Fetch kiosks from API
+const mapCenter = [14.7566, 121.045]; // Default (Camarin, Caloocan area)
+
+// Fetch kiosks
 const fetchKiosks = async () => {
-  loading.value = true
-  error.value = null
-  
+  loading.value = true;
+  error.value = null;
+
   try {
-    const response = await kioskService.getAll()
-    kiosks.value = response.data.data
+    const response = await kioskService.getAll();
+    kiosks.value = response.data.data.map((k) => ({
+      id: k.id,
+      name: k.kiosk_code,
+      address: k.location,
+      lat: k.latitude || k.lat || 14.7566 + (Math.random() - 0.5) * 0.01, // Fallback for demo
+      lng: k.longitude || k.lng || 121.045 + (Math.random() - 0.5) * 0.01,
+      distance: "Calculating...",
+      available: k.status === "active" ? 1 : 0,
+      total: 1,
+      color:
+        k.status === "active"
+          ? "green"
+          : k.status === "maintenance"
+          ? "orange"
+          : "red",
+    }));
+
+    updateMapMarkers();
   } catch (err) {
-    console.error('Kiosks error:', err)
-    error.value = err.response?.data?.message || 'Failed to load stations'
-    
-    if (err.response?.status === 401) {
-      localStorage.removeItem('auth_token')
-      router.push('/login')
-    }
+    console.error("Kiosks error:", err);
+    error.value = "Failed to load stations";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
-// Filter kiosks by search query
-const filteredKiosks = computed(() => {
-  if (!searchQuery.value) return kiosks.value
-  
-  const query = searchQuery.value.toLowerCase()
-  return kiosks.value.filter(kiosk => 
-    kiosk.kiosk_code.toLowerCase().includes(query) ||
-    kiosk.location.toLowerCase().includes(query)
-  )
-})
+const updateMapMarkers = () => {
+  if (!map) return;
 
-// Get status CSS class
-const getStatusClass = (status) => {
-  return {
-    'active': 'available',
-    'inactive': 'occupied',
-    'maintenance': 'maintenance'
-  }[status] || 'occupied'
-}
+  // Clear existing markers
+  markers.forEach((m) => m.remove());
+  markers.length = 0;
 
-// Get status label
-const getStatusLabel = (status) => {
-  return {
-    'active': '✓ Available',
-    'inactive': '⚠ Offline',
-    'maintenance': '🔧 Maintenance'
-  }[status] || '⚠ Unavailable'
-}
+  kiosks.value.forEach((kiosk) => {
+    const icon = L.divIcon({
+      className: "custom-div-icon",
+      html: `<div class='marker-pin ${kiosk.color}'></div><i class='material-icons'>location_on</i>`,
+      iconSize: [30, 42],
+      iconAnchor: [15, 42],
+    });
 
-// Navigate to charging page with selected kiosk
-const navigateToKiosk = (kiosk) => {
-  if (kiosk.status === 'active') {
-    // Store selected kiosk in session storage
-    sessionStorage.setItem('selected_kiosk', JSON.stringify(kiosk))
-    router.push('/scan')
+    const marker = L.marker([kiosk.lat, kiosk.lng], { icon })
+      .addTo(map)
+      .bindPopup(`<b>${kiosk.name}</b><br>${kiosk.address}`);
+
+    markers.push(marker);
+  });
+
+  // Fit bounds if we have points
+  if (markers.length > 0) {
+    const group = new L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(0.2));
   }
-}
+};
 
-// Filter stations when typing
-const filterStations = () => {
-  // Computed property handles this automatically
-}
+const initMap = () => {
+  map = L.map("map", {
+    zoomControl: false,
+    attributionControl: false,
+  }).setView(mapCenter, 14);
 
-onMounted(() => {
-  fetchKiosks()
-})
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+  }).addTo(map);
+
+  // Add a user location marker (simulated)
+  L.circle(mapCenter, {
+    color: "#3B82F6",
+    fillColor: "#3B82F6",
+    fillOpacity: 0.2,
+    radius: 100,
+  }).addTo(map);
+
+  L.circleMarker(mapCenter, {
+    radius: 8,
+    fillColor: "#3B82F6",
+    color: "#fff",
+    weight: 2,
+    opacity: 1,
+    fillOpacity: 1,
+  }).addTo(map);
+};
+
+const focusUserLocation = () => {
+  if (map) map.setView(mapCenter, 16);
+};
+
+const getBorderClass = (kiosk) => {
+  return `${kiosk.color}-border`;
+};
+
+const handleAction = (type, kiosk) => {
+  if (type === "details") {
+    sessionStorage.setItem("selected_kiosk", JSON.stringify(kiosk));
+    router.push("/scan");
+  } else {
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${kiosk.lat},${kiosk.lng}`,
+      "_blank"
+    );
+  }
+};
+
+onMounted(async () => {
+  await nextTick();
+  initMap();
+  fetchKiosks();
+});
 </script>
 
 <style scoped>
 .map-page {
-  width: 100%;
-  max-width: 100vw;
-  padding: 0;
-  padding-bottom: 100px;
-  overflow-x: hidden;
+  padding: 20px 0 100px;
+  background: var(--bg-primary);
+  min-height: 100vh;
   box-sizing: border-box;
-  background: #f8f8f8;
 }
 
-.page-header {
-  background: linear-gradient(135deg, #42b883 0%, #7fdb9f 100%);
-  padding: 24px 16px;
-  box-shadow: 0 4px 12px rgba(218, 41, 28, 0.2);
+.header-section {
+  padding: 0 20px;
+  margin-bottom: 20px;
 }
-
-.page-header h1 {
-  font-size: 1.8rem;
-  color: white;
-  margin-bottom: 16px;
+.page-title {
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: -0.3px;
+  color: var(--text-primary);
+  margin: 0;
 }
-
-.search-bar {
-  display: flex;
-  gap: 10px;
-}
-
-.search-bar input {
-  flex: 1;
-  padding: 14px 16px;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  outline: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
   font-weight: 500;
 }
 
-.search-bar input::placeholder {
-  color: #999;
+.map-wrapper {
+  padding: 0 20px;
+  margin-bottom: 24px;
+  position: relative;
 }
-
-.search-btn {
-  padding: 14px 20px;
-  background: white;
-  color: #42b883;
-  border: none;
-  border-radius: 12px;
-  font-size: 1.2rem;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  font-weight: 700;
-}
-
 .map-container {
-  margin: 16px;
-  background: white;
-  border-radius: 16px;
+  height: 280px;
+  background: var(--bg-tertiary);
+  border-radius: 24px;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-  border: 2px solid #f0f0f0;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  z-index: 1;
 }
 
-.map-placeholder {
-  height: 300px;
+.map-controls {
+  position: absolute;
+  right: 32px;
+  bottom: 16px;
+  z-index: 1000;
+}
+
+.control-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: var(--bg-secondary);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #999;
-  background: #f8f8f8;
+  cursor: pointer;
+  color: #4caf50;
 }
 
-.map-icon {
-  font-size: 4rem;
-  margin-bottom: 10px;
+.shadow {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stations-section {
+  padding: 0 20px;
+}
+.list-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #555;
+  margin-bottom: 16px;
 }
 
 .stations-list {
-  padding: 0 16px;
-}
-
-.stations-list h2 {
-  font-size: 1.3rem;
-  margin-bottom: 12px;
-  color: #292929;
-  font-weight: 800;
-  letter-spacing: -0.3px;
-}
-
-.station-card {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background: white;
-  border-radius: 16px;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  border: 2px solid #f0f0f0;
-  transition: transform 0.2s;
+  flex-direction: column;
+  gap: 16px;
+}
+.station-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.station-card:active {
-  transform: scale(0.98);
+.green-border {
+  border: 2px solid #55b959;
 }
-
-.station-info {
-  flex: 1;
-  min-width: 0;
-  padding-right: 12px;
+.red-border {
+  border: 2px solid #ef4444;
+}
+.orange-border {
+  border: 2px solid #f59e0b;
 }
 
 .station-name {
+  font-size: 16px;
   font-weight: 700;
-  font-size: 1rem;
-  color: #292929;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+}
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 6px;
 }
-
-.station-distance {
-  font-size: 0.85rem;
-  color: #666;
-  margin-bottom: 6px;
+.info-icon {
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+.info-text {
+  font-size: 13px;
+  color: var(--text-secondary);
   font-weight: 500;
 }
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+.rotate-45 {
+  transform: rotate(45deg);
+}
 
-.station-status {
-  font-size: 0.8rem;
+.card-actions {
+  display: flex;
+  gap: 12px;
+}
+.action-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
   font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 8px;
-  display: inline-block;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
 }
 
-.station-status.available {
-  background: #7fdb9f;
-  color: #292929;
-}
-
-.station-status.occupied {
-  background: #f0f0f0;
-  color: #666;
-}
-
-.navigate-btn {
-  padding: 12px 20px;
-  background: #42b883;
+.details-btn {
+  background: #4caf50;
   color: white;
   border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 0.9rem;
-  box-shadow: 0 2px 8px rgba(218, 41, 28, 0.3);
-  flex-shrink: 0;
+}
+.directions-btn {
+  background: var(--bg-secondary);
+  color: #4caf50;
+  border: 1px solid var(--border-color);
+}
+.small-icon {
+  font-size: 16px;
 }
 
-.navigate-btn:active {
-  opacity: 0.85;
+/* Custom Leaflet Marker Styles */
+:deep(.custom-div-icon) {
+  background: none;
+  border: none;
+}
+
+:deep(.marker-pin) {
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 0;
+  position: absolute;
+  transform: rotate(-45deg);
+  left: 50%;
+  top: 50%;
+  margin: -15px 0 0 -15px;
+}
+
+:deep(.marker-pin.green) {
+  background: #10b981;
+}
+:deep(.marker-pin.orange) {
+  background: #f59e0b;
+}
+:deep(.marker-pin.red) {
+  background: #ef4444;
+}
+
+:deep(.custom-div-icon .material-icons) {
+  position: absolute;
+  width: 22px;
+  font-size: 22px;
+  left: 3px;
+  top: 3px;
+  color: white;
+}
+
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+.retry-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
 }
 </style>

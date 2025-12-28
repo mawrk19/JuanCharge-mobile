@@ -1,22 +1,46 @@
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import BottomNav from './components/BottomNav.vue'
+import { onMounted, onUnmounted, computed, watch } from "vue";
+import { useRoute } from "vue-router";
+import BottomNav from "./components/BottomNav.vue";
+import ToastContainer from "./components/ToastContainer.vue";
+import FloatingChargingWidget from "./components/FloatingChargingWidget.vue";
+import {
+  startSessionPolling,
+  stopSessionPolling,
+} from "@/services/sessionState";
 
-const route = useRoute()
+const route = useRoute();
 
 // Hide navbar on login page
-const showNavbar = computed(() => {
-  return route.path !== '/login' && route.path !== '/register'
-})
+const showBottomNav = computed(() => {
+  return !["/login", "/get-started", "/"].includes(route.path);
+});
+
+// Watch for route changes to start/stop polling
+watch(
+  () => route.path,
+  (newPath) => {
+    // Only poll if we are on a protected route or Home
+    if (["/login", "/get-started", "/"].includes(newPath)) {
+      stopSessionPolling();
+    } else {
+      startSessionPolling();
+    }
+  },
+  { immediate: true }
+);
+
+onUnmounted(() => {
+  stopSessionPolling();
+});
 </script>
 
 <template>
   <div id="app">
-    <div class="app-content">
-      <router-view />
-    </div>
-    <BottomNav v-if="showNavbar" />
+    <router-view />
+    <FloatingChargingWidget />
+    <BottomNav v-if="showBottomNav" />
+    <ToastContainer />
   </div>
 </template>
 
@@ -36,15 +60,17 @@ html {
 }
 
 body {
-  font-family: 'Speedee', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: #f8f8f8;
-  color: #292929;
+  font-family: "Speedee", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   width: 100%;
   height: 100%;
   overflow-x: hidden;
   position: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s, color 0.3s;
 }
 
 #app {

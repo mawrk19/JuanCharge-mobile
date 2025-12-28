@@ -1,578 +1,579 @@
 <template>
   <div class="achievements-page">
-    <div class="page-header">
-      <h1>🏆 Rewards</h1>
-      <p>Your charging points and history</p>
-    </div>
+    <!-- Header Section -->
+    <div class="header-container">
+      <div class="header-content">
+        <div class="header-text">
+          <h1>Achievements</h1>
+          <p>Track your progress and earn rewards</p>
+        </div>
 
-    <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
-      <p>Loading rewards...</p>
-    </div>
-
-    <!-- Error State -->
-    <div v-else-if="error" class="error-state">
-      <p>{{ error }}</p>
-      <button @click="fetchRewards">Retry</button>
-    </div>
-
-    <!-- Content -->
-    <template v-else>
-      <div class="points-summary">
-        <div class="total-points">
-          <div class="points-icon">⭐</div>
-          <div class="points-info">
-            <div class="points-value">{{ pointsBalance.points_balance }}</div>
-            <div class="points-label">Available Points</div>
+        <!-- Summary Stats Cards -->
+        <div class="summary-stats">
+          <div class="stat-card glass-effect">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-info">
+              <span class="stat-label">Completed:</span>
+              <span class="stat-value"
+                >{{ completedCount }}/{{ totalCount }}</span
+              >
+            </div>
           </div>
-        </div>
-        <div class="level-badge">
-          <div class="badge-icon">⚡</div>
-          <div class="level-name">{{ formatEnergy(pointsBalance.available_energy_wh) }}</div>
-        </div>
-      </div>
-
-      <!-- Points Stats -->
-      <div class="stats-cards">
-        <div class="stat-item">
-          <div class="stat-label">Total Earned</div>
-          <div class="stat-value">{{ pointsBalance.total_earned }}</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Total Redeemed</div>
-          <div class="stat-value">{{ pointsBalance.total_redeemed }}</div>
-        </div>
-      </div>
-
-      <!-- Charging History Section -->
-      <div class="challenges-section">
-        <h2>⚡ Charging History</h2>
-        
-        <div v-if="chargingHistory.length === 0" class="empty-state">
-          <p>No charging history yet</p>
-        </div>
-        
-        <div class="challenge-list">
-          <div 
-            class="challenge-item" 
-            v-for="session in chargingHistory" 
-            :key="session.session_id"
-          >
-            <div class="challenge-icon">
-              {{ session.status === 'completed' ? '✓' : session.status === 'cancelled' ? '✗' : '⏱' }}
-            </div>
-            <div class="challenge-details">
-              <div class="challenge-name">{{ session.kiosk.kiosk_code }}</div>
-              <div class="challenge-reward">
-                {{ session.duration_minutes }} min • {{ session.energy_wh }} Wh
-              </div>
-              <div class="challenge-time">{{ formatDate(session.start_time) }}</div>
-            </div>
-            <div 
-              class="challenge-status" 
-              :class="session.status"
-            >
-              {{ getStatusLabel(session.status) }}
+          <div class="stat-card glass-effect">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-info">
+              <span class="stat-label">Points Earned:</span>
+              <span class="stat-value">{{ totalPoints }}</span>
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- Load More Button -->
-        <button 
-          v-if="canLoadMore" 
-          @click="loadMoreHistory" 
-          class="load-more-btn"
-          :disabled="loadingMore"
+    <div class="content-container">
+      <!-- Overall Progress -->
+      <div class="progress-card shadow-sm">
+        <div class="progress-header">
+          <span class="progress-title">Overall Progress</span>
+          <span class="progress-percentage">{{ overallProgress }}%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div
+            class="progress-bar"
+            :style="{ width: overallProgress + '%' }"
+          ></div>
+        </div>
+      </div>
+
+      <!-- Leaderboard Banner -->
+      <button
+        class="leaderboard-banner shadow-sm"
+        @click="router.push('/leaderboards')"
+      >
+        <div class="banner-content">
+          <div class="banner-icon">👥</div>
+          <div class="banner-text">
+            <h3>See Leaderboards</h3>
+            <p>Compete with your community</p>
+          </div>
+        </div>
+        <div class="banner-arrow">›</div>
+      </button>
+
+      <!-- Completed Achievements -->
+      <div class="section-header">
+        <h3>
+          🏆 Completed
+          <span class="count">({{ completedAchievements.length }})</span>
+        </h3>
+      </div>
+
+      <div class="achievements-list">
+        <div
+          v-for="item in completedAchievements"
+          :key="item.id"
+          class="achievement-card completed shadow-sm"
         >
-          {{ loadingMore ? 'Loading...' : 'Load More' }}
-        </button>
+          <div class="card-icon-wrapper">
+            <div class="card-icon">{{ getIcon(item.id) }}</div>
+          </div>
+          <div class="card-content">
+            <div class="card-header">
+              <h4>{{ item.title }}</h4>
+              <span class="badge completed">✓ Completed</span>
+            </div>
+            <p class="card-desc">{{ getDescription(item.id) }}</p>
+            <p class="points-earned">
+              ⭐ + {{ item.points_reward }} points earned
+            </p>
+          </div>
+        </div>
       </div>
-    </template>
+
+      <!-- In Progress Achievements -->
+      <div class="section-header">
+        <h3>
+          ⚡ In Progress
+          <span class="count">({{ inProgressAchievements.length }})</span>
+        </h3>
+      </div>
+
+      <div class="achievements-list">
+        <div
+          v-for="item in inProgressAchievements"
+          :key="item.id"
+          class="achievement-card in-progress shadow-sm"
+        >
+          <div class="card-icon-wrapper">
+            <div class="card-icon">{{ getIcon(item.id) }}</div>
+          </div>
+          <div class="card-content">
+            <div class="card-header">
+              <h4>{{ item.title }}</h4>
+            </div>
+            <p class="card-desc">{{ getDescription(item.id) }}</p>
+
+            <div class="item-progress">
+              <div class="progress-info">
+                <span>{{ item.progress }} / {{ item.target }}</span>
+                <span
+                  >{{ Math.round((item.progress / item.target) * 100) }}%</span
+                >
+              </div>
+              <div class="progress-bar-container small">
+                <div
+                  class="progress-bar green"
+                  :style="{
+                    width: (item.progress / item.target) * 100 + '%',
+                  }"
+                ></div>
+              </div>
+            </div>
+
+            <p class="points-reward">
+              ☆ Reward: {{ item.points_reward }} Points
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coming Soon -->
+      <div class="section-header">
+        <h3>🔒 Coming Soon</h3>
+      </div>
+
+      <div class="achievement-card locked shadow-sm">
+        <div class="card-icon-wrapper">
+          <div class="card-icon locked">🔒</div>
+        </div>
+        <div class="card-content">
+          <p class="locked-text">More achievements coming soon!</p>
+          <p class="locked-subtext">
+            Keep using JuanCharge to unlock new challenges
+          </p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { pointsService, chargingService } from '@/services/apiServices'
-import { formatEnergy } from '@/services/apiConstants'
+import { ref, onMounted, computed } from "vue";
+import { useRouter } from "vue-router";
+import { dashboardService } from "@/services/apiServices";
 
-const pointsBalance = ref({
-  points_balance: 0,
-  total_earned: 0,
-  total_redeemed: 0,
-  available_energy_wh: 0
-})
+const router = useRouter();
+const loading = ref(true);
+const achievements = ref([]);
 
-const chargingHistory = ref([])
-const loading = ref(true)
-const loadingMore = ref(false)
-const error = ref(null)
-const currentPage = ref(1)
-const lastPage = ref(1)
+// Mapping helpers for text/icons (since backend might send just IDs/Titles)
+const getIcon = (id) => {
+  const map = {
+    first_charge: "🎖️",
+    account_created: "🏆",
+    eco_warrior: "🌿",
+    power_user: "⚡",
+    point_collector: "⭐",
+    clean_barangay: "🌐",
+    juice_up: "🔋",
+  };
+  return map[id] || "🏅";
+};
 
-// Can load more history
-const canLoadMore = ref(false)
+const getDescription = (id) => {
+  const map = {
+    first_charge: "First charging session",
+    account_created: "Welcome to JuanCharge!",
+    eco_warrior: "Recycle waste items",
+    power_user: "Charge your device frequently",
+    point_collector: "Accumulate points",
+    clean_barangay: "Recycle more waste",
+    juice_up: "Power up your devices",
+  };
+  return map[id] || "Challenge yourself";
+};
 
-// Fetch rewards data
-const fetchRewards = async () => {
-  loading.value = true
-  error.value = null
-  
+// Fetch Data
+const fetchAchievements = async () => {
+  loading.value = true;
   try {
-    const [balanceResponse, historyResponse] = await Promise.all([
-      pointsService.getBalance(),
-      chargingService.getHistory({ per_page: 10, page: 1 })
-    ])
-    
-    pointsBalance.value = balanceResponse.data.data
-    chargingHistory.value = historyResponse.data.data
-    
-    // Update pagination info
-    if (historyResponse.data.pagination) {
-      currentPage.value = historyResponse.data.pagination.current_page
-      lastPage.value = historyResponse.data.pagination.last_page
-      canLoadMore.value = currentPage.value < lastPage.value
+    const response = await dashboardService.getAchievements();
+    if (response.data && response.data.data) {
+      achievements.value = response.data.data;
     }
-  } catch (err) {
-    console.error('Rewards error:', err)
-    error.value = err.response?.data?.message || 'Failed to load rewards'
-    
-    if (err.response?.status === 401) {
-      localStorage.removeItem('auth_token')
-      router.push('/login')
-    }
+  } catch (error) {
+    console.error("Failed to fetch achievements:", error);
+    // Fallback Mock if API fails
+    mockFallback();
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
-// Load more charging history
-const loadMoreHistory = async () => {
-  if (loadingMore.value || !canLoadMore.value) return
-  
-  loadingMore.value = true
-  
-  try {
-    const nextPage = currentPage.value + 1
-    const response = await chargingService.getHistory({ 
-      per_page: 10, 
-      page: nextPage 
-    })
-    
-    // Append new history items
-    chargingHistory.value.push(...response.data.data)
-    
-    // Update pagination
-    if (response.data.pagination) {
-      currentPage.value = response.data.pagination.current_page
-      lastPage.value = response.data.pagination.last_page
-      canLoadMore.value = currentPage.value < lastPage.value
-    }
-  } catch (err) {
-    console.error('Load more error:', err)
-  } finally {
-    loadingMore.value = false
-  }
-}
+const mockFallback = () => {
+  achievements.value = [
+    {
+      id: "first_charge",
+      title: "First Charge",
+      is_completed: true,
+      progress: 1,
+      target: 1,
+      points_reward: 10,
+    },
+    {
+      id: "eco_warrior",
+      title: "Eco Warrior",
+      is_completed: false,
+      progress: 34,
+      target: 50,
+      points_reward: 50,
+    },
+  ];
+};
 
-// Get status label
-const getStatusLabel = (status) => {
-  return {
-    'active': 'Active',
-    'completed': 'Completed',
-    'cancelled': 'Cancelled'
-  }[status] || status
-}
+// Computeds
+const completedAchievements = computed(() => {
+  return achievements.value.filter((a) => a.is_completed);
+});
 
-// Format date
-const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now - date
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-  
-  if (diffMins < 60) return `${diffMins} min ago`
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-  
-  return date.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-  })
-}
+const inProgressAchievements = computed(() => {
+  return achievements.value.filter((a) => !a.is_completed);
+});
+
+const totalCount = computed(() => achievements.value.length);
+const completedCount = computed(() => completedAchievements.value.length);
+const totalPoints = computed(() =>
+  completedAchievements.value.reduce((sum, item) => sum + item.points_reward, 0)
+);
+
+const overallProgress = computed(() => {
+  if (totalCount.value === 0) return 0;
+  return Math.round((completedCount.value / totalCount.value) * 100);
+});
 
 onMounted(() => {
-  fetchRewards()
-})
+  fetchAchievements();
+});
 </script>
 
 <style scoped>
 .achievements-page {
   width: 100%;
-  max-width: 100vw;
-  padding: 0;
-  padding-bottom: 100px;
-  overflow-x: hidden;
-  box-sizing: border-box;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  font-family: "Inter", sans-serif;
+  padding-bottom: 80px;
+  margin-bottom: 30px;
 }
 
-.page-header {
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
+.header-container {
+  background: linear-gradient(180deg, #2b7fff 0%, #209958 100%);
   color: white;
-  text-align: center;
-  padding: 32px 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
-}
-
-.page-header h1 {
-  font-size: 28px;
-  margin-bottom: 8px;
-  font-weight: 800;
-}
-
-.page-header p {
-  font-size: 15px;
-  opacity: 0.95;
-  font-weight: 600;
-}
-
-.points-summary {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 12px;
-  margin: 0 16px 24px;
-}
-
-.total-points {
-  display: flex;
-  align-items: center;
-  padding: 20px;
-  background: white;
-  border-radius: 16px;
-  color: #333;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  border: 2px solid #7fdb9f;
-}
-
-.points-icon {
-  font-size: 40px;
-  margin-right: 16px;
-}
-
-.points-value {
-  font-size: 32px;
-  font-weight: 800;
-  margin-bottom: 4px;
-  color: #42b883;
-}
-
-.points-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: #666;
-}
-
-.level-badge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: linear-gradient(135deg, #7fdb9f 0%, #5fc98e 100%);
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(255, 199, 44, 0.3);
-}
-
-.badge-icon {
-  font-size: 40px;
-  margin-bottom: 6px;
-}
-
-.level-name {
-  font-size: 13px;
-  font-weight: 800;
-  color: #333;
-  text-align: center;
-}
-
-.achievements-grid {
-  display: grid;
-  gap: 12px;
-  margin: 0 16px 24px;
-}
-
-.achievement-card {
+  padding: 50px 24px 80px; /* Increased top padding to avoid clipping, matched bottom padding for overlap */
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
   position: relative;
-  display: flex;
-  padding: 18px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  opacity: 0.5;
-  transition: all 0.3s;
-  border: 2px solid #f0f0f0;
+  margin-bottom: 40px; /* Space for the floating cards */
 }
 
-.achievement-card.unlocked {
-  opacity: 1;
-  border: 2px solid #7fdb9f;
-  box-shadow: 0 4px 16px rgba(255, 199, 44, 0.2);
-}
-
-.achievement-icon {
-  font-size: 42px;
-  margin-right: 16px;
-  min-width: 50px;
+.header-text {
   text-align: center;
+  margin-bottom: 24px;
 }
 
-.achievement-info {
-  flex: 1;
+.header-text h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  margin-bottom: 4px;
 }
 
-.achievement-name {
-  font-size: 17px;
-  font-weight: 800;
-  color: #333;
-  margin-bottom: 6px;
-}
-
-.achievement-description {
+.header-text p {
   font-size: 14px;
-  color: #666;
-  margin-bottom: 12px;
-  font-weight: 600;
+  opacity: 0.9;
+  margin: 0;
 }
 
-.achievement-progress {
+.summary-stats {
+  position: absolute;
+  bottom: -30px;
+  left: 20px;
+  right: 20px;
   display: flex;
+  gap: 12px;
+}
+
+.stat-card {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.stat-icon {
+  font-size: 24px;
   margin-bottom: 8px;
 }
 
-.progress-bar {
-  flex: 1;
-  height: 10px;
-  background: #f0f0f0;
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #42b883 0%, #7fdb9f 100%);
-  transition: width 0.3s;
-  box-shadow: 0 0 8px rgba(218, 41, 28, 0.3);
-}
-
-.progress-text {
-  font-size: 13px;
-  color: #666;
-  min-width: 40px;
-  font-weight: 700;
-}
-
-.achievement-reward {
-  font-size: 14px;
-  font-weight: 800;
-  color: #42b883;
-}
-
-.unlock-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg, #7fdb9f 0%, #5fc98e 100%);
-  color: #333;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  font-size: 18px;
-  box-shadow: 0 2px 8px rgba(255, 199, 44, 0.4);
-}
-
-.challenges-section {
-  margin: 0 16px;
-}
-
-.challenges-section h2 {
-  font-size: 20px;
-  color: #42b883;
-  margin-bottom: 16px;
-  font-weight: 800;
-}
-
-.challenge-list {
+.stat-info {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.challenge-item {
-  display: flex;
-  align-items: center;
-  padding: 16px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  border: 1px solid #f0f0f0;
-}
-
-.challenge-icon {
-  font-size: 32px;
-  margin-right: 16px;
-  min-width: 40px;
-  text-align: center;
-}
-
-.challenge-details {
-  flex: 1;
-}
-
-.challenge-name {
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 4px;
-  font-size: 15px;
-}
-
-.challenge-reward {
-  font-size: 13px;
-  color: #42b883;
-  font-weight: 800;
-  margin-bottom: 2px;
-}
-
-.challenge-time {
-  font-size: 12px;
-  color: #999;
-  font-weight: 600;
-}
-
-.challenge-status {
-  padding: 8px 16px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: capitalize;
-}
-
-.challenge-status.completed {
-  background: linear-gradient(135deg, #7fdb9f 0%, #5fc98e 100%);
-  color: #333;
-  box-shadow: 0 2px 8px rgba(127, 219, 159, 0.3);
-}
-
-.challenge-status.active {
-  background: #42b883;
-  color: white;
-}
-
-.challenge-status.cancelled {
-  background: #f0f0f0;
-  color: #666;
-}
-
-/* Stats Cards */
-.stats-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 0 16px 24px;
-}
-
-.stat-item {
-  padding: 16px;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  border: 1px solid #f0f0f0;
 }
 
 .stat-label {
-  font-size: 13px;
-  color: #666;
-  font-weight: 600;
-  margin-bottom: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 2px;
 }
 
 .stat-value {
-  font-size: 24px;
-  color: #42b883;
-  font-weight: 800;
-}
-
-/* Loading/Error States */
-.loading-state,
-.error-state {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.loading-state p {
   font-size: 16px;
-  color: #666;
-  font-weight: 600;
-}
-
-.error-state p {
-  font-size: 16px;
-  color: #e74c3c;
-  margin-bottom: 16px;
-  font-weight: 600;
-}
-
-.error-state button {
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
+  font-weight: 700;
   color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
 }
 
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #999;
+.content-container {
+  padding: 0 20px;
+}
+
+.progress-card {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-weight: 600;
   font-size: 14px;
 }
 
-/* Load More Button */
-.load-more-btn {
+.progress-bar-container {
   width: 100%;
-  padding: 14px;
-  background: white;
-  color: #42b883;
-  border: 2px solid #42b883;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all 0.3s;
-  margin-top: 12px;
+  height: 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
-.load-more-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.progress-bar-container.small {
+  height: 6px;
 }
 
-.load-more-btn:not(:disabled):hover {
+.progress-bar {
+  height: 100%;
+  background: black; /* Default black for overall per design */
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.progress-bar.green {
   background: #42b883;
+}
+
+.leaderboard-banner {
+  width: 100%;
+  background: linear-gradient(90deg, #42b883 0%, #2e7d32 100%);
+  border: none;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   color: white;
+  margin-bottom: 24px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.banner-icon {
+  background: rgba(255, 255, 255, 0.2);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.banner-text h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.banner-text p {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.banner-arrow {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.section-header {
+  margin-bottom: 16px;
+  margin-top: 24px;
+}
+
+.section-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.count {
+  color: var(--text-secondary);
+  font-weight: normal;
+}
+
+.achievements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.achievement-card {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  gap: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.achievement-card.completed {
+  border: 1px solid #a5d6a7;
+  background-color: var(--bg-secondary);
+}
+
+.card-icon-wrapper {
+  flex-shrink: 0;
+}
+
+.card-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(66, 184, 131, 0.1);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.achievement-card.completed .card-icon {
+  background: #4caf50;
+  color: white;
+}
+
+.achievement-card.locked .card-icon {
+  background: #eee;
+  color: #999;
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.card-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.badge {
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.badge.completed {
+  background: #4caf50;
+  color: white;
+}
+
+.card-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.points-earned {
+  margin: 0;
+  font-size: 13px;
+  color: #fbc02d;
+  font-weight: 600;
+}
+
+.points-reward {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.item-progress {
+  margin-top: 8px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.locked-text {
+  font-weight: 600;
+  color: #666;
+  margin: 0;
+  margin-bottom: 4px;
+}
+
+.locked-subtext {
+  font-size: 12px;
+  color: #999;
+  margin: 0;
+}
+
+.shadow-sm {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 </style>

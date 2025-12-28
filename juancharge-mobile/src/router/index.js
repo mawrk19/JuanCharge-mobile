@@ -1,91 +1,120 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/Home.vue'
-import Map from '../views/Map.vue'
-import ScanQR from '../views/ScanQR.vue'
-import Achievements from '../views/Achievements.vue'
-import Settings from '../views/Settings.vue'
-import Login from '../views/Login.vue'
-import Register from '../views/Register.vue'
-import Splash from '../views/Splash.vue'
-import { secureStorage } from '../services/secureStorage'
+import { createRouter, createWebHistory } from "vue-router";
+import Home from "../views/Home.vue";
+import Map from "../views/Map.vue";
+import ScanQR from "../views/ScanQR.vue";
+import Achievements from "../views/Achievements.vue";
+import Settings from "../views/Settings.vue";
+import Login from "../views/Login.vue";
+import Leaderboards from "../views/Leaderboards.vue";
+import EditProfile from "../views/EditProfile.vue";
+import HelpCenter from "../views/HelpCenter.vue";
+import About from "../views/About.vue";
+
+import Splash from "../views/Splash.vue";
+import GetStarted from "../views/GetStarted.vue";
+import { secureStorage } from "../services/secureStorage";
 
 const routes = [
   {
-    path: '/',
-    name: 'Splash',
+    path: "/",
+    name: "Splash",
     component: Splash,
-    meta: { title: 'Loading...' }
+    meta: { title: "Loading..." },
   },
   {
-    path: '/login',
-    name: 'Login',
+    path: "/get-started",
+    name: "GetStarted",
+    component: GetStarted,
+    meta: { title: "Get Started", requiresGuest: true },
+  },
+  {
+    path: "/login",
+    name: "Login",
     component: Login,
-    meta: { title: 'Login', requiresGuest: true }
+    meta: { title: "Login", requiresGuest: true },
   },
+
   {
-    path: '/register',
-    name: 'Register',
-    component: Register,
-    meta: { title: 'Register', requiresGuest: true }
-  },
-  {
-    path: '/home',
-    name: 'Home',
+    path: "/home",
+    name: "Home",
     component: Home,
-    meta: { title: 'Home', requiresAuth: true }
+    meta: { title: "Home", requiresAuth: true },
   },
   {
-    path: '/map',
-    name: 'Map',
+    path: "/map",
+    name: "Map",
     component: Map,
-    meta: { title: 'Map', requiresAuth: true }
+    meta: { title: "Map", requiresAuth: true },
   },
   {
-    path: '/scan',
-    name: 'Scan',
+    path: "/scan",
+    name: "Scan",
     component: ScanQR,
-    meta: { title: 'Scan QR', requiresAuth: true }
+    meta: { title: "Scan QR", requiresAuth: true },
   },
   {
-    path: '/achievements',
-    name: 'Achievements',
+    path: "/achievements",
+    name: "Achievements",
     component: Achievements,
-    meta: { title: 'Achievements', requiresAuth: true }
+    meta: { title: "Achievements", requiresAuth: true },
   },
   {
-    path: '/settings',
-    name: 'Settings',
+    path: "/leaderboards",
+    name: "Leaderboards",
+    component: Leaderboards,
+    meta: { title: "Leaderboards", requiresAuth: true },
+  },
+  {
+    path: "/settings",
+    name: "Settings",
     component: Settings,
-    meta: { title: 'Settings', requiresAuth: true }
-  }
-]
+    meta: { title: "Settings", requiresAuth: true },
+  },
+  {
+    path: "/settings/edit-profile",
+    name: "EditProfile",
+    component: EditProfile,
+    meta: { title: "Edit Profile", requiresAuth: true },
+  },
+  {
+    path: "/help",
+    name: "HelpCenter",
+    component: HelpCenter,
+    meta: { title: "Help Center", requiresAuth: true },
+  },
+  {
+    path: "/about",
+    name: "About",
+    component: About,
+    meta: { title: "About JuanCharge", requiresAuth: true },
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
-})
+  routes,
+});
 
 // Navigation guard for authentication using secure storage
 router.beforeEach(async (to, from, next) => {
   // Allow access to splash screen without checks
-  if (to.path === '/') {
-    next()
-    return
+  if (to.path === "/") {
+    next();
+    return;
   }
 
-  const apiToken = await secureStorage.getApiToken()
-  
+  const apiToken = await secureStorage.getApiToken();
+
   // Check if route requires authentication
   if (to.meta.requiresAuth && !apiToken) {
-    next('/login')
+    next("/login");
   }
   // Check if route requires guest (already logged in users shouldn't access)
   else if (to.meta.requiresGuest && apiToken) {
-    next('/home')
+    next("/home");
+  } else {
+    next();
   }
-  else {
-    next()
-  }
-})
+});
 
-export default router
+export default router;

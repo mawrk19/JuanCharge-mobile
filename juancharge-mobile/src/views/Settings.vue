@@ -1,8 +1,37 @@
 <template>
   <div class="settings-page">
     <div class="page-header">
-      <h1>⚙️ Settings</h1>
+      <h1>Settings</h1>
       <p>Manage your account and preferences</p>
+    </div>
+
+    <!-- Profile Section -->
+    <div class="card profile-card" v-if="!loading">
+      <div class="profile-avatar">
+        {{ userInitials }}
+      </div>
+      <div class="profile-info">
+        <div class="profile-name">
+          {{ userProfile.first_name }} {{ userProfile.last_name }}
+        </div>
+        <div class="profile-email">{{ userProfile.email }}</div>
+        <div
+          class="profile-phone"
+          v-if="
+            userProfile.phone || userProfile.phone_number || userProfile.contact
+          "
+        >
+          {{
+            userProfile.phone || userProfile.phone_number || userProfile.contact
+          }}
+        </div>
+      </div>
+      <div class="profile-arrow" @click="router.push('/settings/edit-profile')">
+        <button class="edit-trigger-btn">
+          Edit
+          <span class="material-icons">chevron_right</span>
+        </button>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -10,604 +39,457 @@
       <p>Loading profile...</p>
     </div>
 
-    <!-- Error State -->
-    <div v-else-if="error" class="error-state">
-      <p>{{ error }}</p>
-      <button @click="fetchProfile">Retry</button>
+    <!-- Account Section -->
+    <div class="section-title">Account</div>
+    <div class="card settings-group">
+      <div class="list-item" @click="openLink('permissions')">
+        <div class="item-icon">
+          <span class="material-icons">verified_user</span>
+        </div>
+        <div class="item-content">Permissions</div>
+        <div class="item-action">
+          <span class="material-icons">chevron_right</span>
+        </div>
+      </div>
+      <div class="list-item" @click="openLink('privacy')">
+        <div class="item-icon">
+          <span class="material-icons">security</span>
+        </div>
+        <div class="item-content">Privacy & Security</div>
+        <div class="item-action">
+          <span class="material-icons">chevron_right</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Profile Content -->
-    <template v-else>
-      <!-- Profile Section -->
-      <div class="profile-section">
-        <div class="profile-avatar">
-          <div class="avatar-icon">👤</div>
+    <!-- Preferences Section -->
+    <div class="section-title">Preferences</div>
+    <div class="card settings-group">
+      <div class="list-item">
+        <div class="item-icon">
+          <span class="material-icons">notifications</span>
         </div>
-        <div class="profile-info">
-          <div class="profile-name">{{ userProfile.first_name }} {{ userProfile.last_name }}</div>
-          <div class="profile-email">{{ userProfile.email }}</div>
-          <div class="profile-points">{{ userProfile.points_balance }} Points</div>
+        <div class="item-content">
+          <div class="item-title">Notifications</div>
+          <div class="item-subtitle">Get updates on your activity</div>
         </div>
-      </div>
-
-      <!-- Profile Details -->
-      <div class="settings-section">
-        <h2>👤 Profile Information</h2>
-        <div class="settings-group">
-          <div class="info-item">
-            <div class="info-label">First Name</div>
-            <div class="info-value">{{ userProfile.first_name }}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">Last Name</div>
-            <div class="info-value">{{ userProfile.last_name }}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">Email</div>
-            <div class="info-value">{{ userProfile.email }}</div>
-          </div>
-          <div class="info-item" v-if="userProfile.phone">
-            <div class="info-label">Phone</div>
-            <div class="info-value">{{ userProfile.phone }}</div>
-          </div>
-          <div class="info-item" v-if="userProfile.birth_date">
-            <div class="info-label">Birth Date</div>
-            <div class="info-value">{{ formatDate(userProfile.birth_date) }}</div>
-          </div>
-        </div>
-        <button class="action-btn" @click="showEditProfile = true">
-          ✏️ Edit Profile
-        </button>
-      </div>
-
-      <!-- Edit Profile Modal -->
-      <div v-if="showEditProfile" class="modal-overlay" @click="showEditProfile = false">
-        <div class="modal-content" @click.stop>
-          <h3>Edit Profile</h3>
-          <form @submit.prevent="updateProfile">
-            <div class="form-group">
-              <label>First Name</label>
-              <input v-model="editForm.first_name" type="text" required />
-            </div>
-            <div class="form-group">
-              <label>Last Name</label>
-              <input v-model="editForm.last_name" type="text" required />
-            </div>
-            <div class="form-group">
-              <label>Phone</label>
-              <input v-model="editForm.phone" type="tel" />
-            </div>
-            <div class="form-group">
-              <label>Birth Date</label>
-              <input v-model="editForm.birth_date" type="date" />
-            </div>
-            <div class="modal-actions">
-              <button type="button" @click="showEditProfile = false" class="cancel-btn">
-                Cancel
-              </button>
-              <button type="submit" class="save-btn" :disabled="updating">
-                {{ updating ? 'Saving...' : 'Save Changes' }}
-              </button>
-            </div>
-          </form>
+        <div class="item-action">
+          <label class="toggle-switch">
+            <input type="checkbox" v-model="preferences.notifications" />
+            <span class="toggle-slider"></span>
+          </label>
         </div>
       </div>
-
-      <!-- Change Password -->
-      <div class="settings-section">
-        <h2>🔒 Security</h2>
-        <button class="action-btn" @click="showChangePassword = true">
-          Change Password
-        </button>
-      </div>
-
-      <!-- Change Password Modal -->
-      <div v-if="showChangePassword" class="modal-overlay" @click="showChangePassword = false">
-        <div class="modal-content" @click.stop>
-          <h3>Change Password</h3>
-          <form @submit.prevent="changePassword">
-            <div class="form-group">
-              <label>Current Password</label>
-              <input v-model="passwordForm.current_password" type="password" required />
-            </div>
-            <div class="form-group">
-              <label>New Password</label>
-              <input v-model="passwordForm.new_password" type="password" required minlength="8" />
-            </div>
-            <div class="form-group">
-              <label>Confirm New Password</label>
-              <input v-model="passwordForm.new_password_confirmation" type="password" required />
-            </div>
-            <div v-if="passwordError" class="error-message">
-              {{ passwordError }}
-            </div>
-            <div class="modal-actions">
-              <button type="button" @click="showChangePassword = false" class="cancel-btn">
-                Cancel
-              </button>
-              <button type="submit" class="save-btn" :disabled="changingPassword">
-                {{ changingPassword ? 'Changing...' : 'Change Password' }}
-              </button>
-            </div>
-          </form>
+      <div class="list-item">
+        <div class="item-icon">
+          <span class="material-icons">sync</span>
+        </div>
+        <div class="item-content">
+          <div class="item-title">Auto Sync</div>
+          <div class="item-subtitle">Sync when online</div>
+        </div>
+        <div class="item-action">
+          <label class="toggle-switch">
+            <input type="checkbox" v-model="preferences.autoSync" />
+            <span class="toggle-slider"></span>
+          </label>
         </div>
       </div>
-
-      <!-- Account Actions -->
-      <div class="settings-section">
-        <h2>🚪 Account</h2>
-        <button class="logout-btn" @click="logout" :disabled="loggingOut">
-          {{ loggingOut ? 'Logging out...' : 'Logout' }}
-        </button>
+      <div class="list-item">
+        <div class="item-icon">
+          <span class="material-icons">dark_mode</span>
+        </div>
+        <div class="item-content">
+          <div class="item-title">Dark Mode</div>
+        </div>
+        <div class="item-action">
+          <label class="toggle-switch">
+            <input type="checkbox" v-model="isDark" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
+    </div>
 
-      <!-- App Info -->
-      <div class="app-info">
-        <p>JuanCharge Mobile v1.0.0</p>
-        <p>© 2024 All rights reserved</p>
+    <!-- Device Section -->
+    <div class="section-title">Device</div>
+    <div class="card settings-group">
+      <div class="list-item device-item">
+        <div class="item-icon">
+          <span class="material-icons">smartphone</span>
+        </div>
+        <div class="item-content">
+          <div class="item-title">Device</div>
+          <div class="item-subtitle">{{ deviceId }}</div>
+        </div>
       </div>
-    </template>
+      <div class="device-info-box">
+        <div class="info-box-content">
+          <span class="material-icons info-icon">lightbulb</span>
+          <p>
+            Your device is automatically logged in. You won't need to sign in
+            again unless you log out manually.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Support Section -->
+    <div class="section-title">Support</div>
+    <div class="card settings-group">
+      <div class="list-item" @click="router.push('/help')">
+        <div class="item-icon">
+          <span class="material-icons">help_outline</span>
+        </div>
+        <div class="item-content">Help Center</div>
+        <div class="item-action">
+          <span class="material-icons">chevron_right</span>
+        </div>
+      </div>
+      <div class="list-item" @click="router.push('/about')">
+        <div class="item-icon">
+          <span class="material-icons">info_outline</span>
+        </div>
+        <div class="item-content">About JuanCharge</div>
+        <div class="item-action">
+          <span class="material-icons">chevron_right</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="page-footer">
+      <p>Version 1.0.0</p>
+      <p>© 2025 JuanCharge Philippines</p>
+
+      <button class="logout-btn" @click="logout" :disabled="loggingOut">
+        <span class="material-icons btn-icon" v-if="!loggingOut">logout</span>
+        <span v-if="!loggingOut">Log Out</span>
+        <span v-else>Logging out...</span>
+      </button>
+    </div>
+
+    <!-- Edit Profile Modal (Simplified Reuse) -->
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { authService } from '@/services/apiServices'
-import { secureStorage } from '@/services/secureStorage'
+import { ref, onMounted, computed, watch } from "vue";
+import { useRouter } from "vue-router";
+import { authService } from "@/services/apiServices";
+import { secureStorage } from "@/services/secureStorage";
+import { useTheme } from "@/composables/useTheme";
+import Swal from "sweetalert2";
 
-const router = useRouter()
+const router = useRouter();
+const { isDark, toggleTheme } = useTheme();
 
-const userProfile = ref({
-  first_name: '',
-  last_name: '',
-  email: '',
-  phone: '',
-  birth_date: '',
-  points_balance: 0
-})
+// State
+const userProfile = ref({});
+const loading = ref(true);
+const loggingOut = ref(false);
+const deviceId = ref("device_" + Math.random().toString(36).substr(2, 9));
 
-const editForm = ref({})
-const passwordForm = ref({
-  current_password: '',
-  new_password: '',
-  new_password_confirmation: ''
-})
+const preferences = ref({
+  notifications: true,
+  autoSync: false,
+});
 
-const loading = ref(true)
-const error = ref(null)
-const updating = ref(false)
-const changingPassword = ref(false)
-const loggingOut = ref(false)
-const showEditProfile = ref(false)
-const showChangePassword = ref(false)
-const passwordError = ref(null)
+const userInitials = computed(() => {
+  const first = userProfile.value.first_name?.charAt(0) || "";
+  const last = userProfile.value.last_name?.charAt(0) || "";
+  return (first + last).toUpperCase() || "U";
+});
 
-// Fetch user profile
+// Fetch Profile
 const fetchProfile = async () => {
-  loading.value = true
-  error.value = null
-
+  loading.value = true;
   try {
-    const response = await authService.me()
-    // Laravel returns { success: true, user: {...} }
-    userProfile.value = response.data.user || response.data.data || {}
-    
-    // Initialize edit form
-    editForm.value = {
-      first_name: userProfile.value.first_name || '',
-      last_name: userProfile.value.last_name || '',
-      phone: userProfile.value.phone || userProfile.value.phone_number || '',
-      birth_date: userProfile.value.birth_date || ''
-    }
+    const response = await authService.me();
+    userProfile.value = response.data.user || response.data.data || {};
   } catch (err) {
-    console.error('Profile error:', err)
-    error.value = err.response?.data?.message || 'Failed to load profile'
-    
-    if (err.response?.status === 401) {
-      localStorage.removeItem('auth_token')
-      router.push('/login')
-    }
+    console.error("Profile load error", err);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 
-// Update profile
 const updateProfile = async () => {
-  updating.value = true
-
+  updating.value = true;
   try {
-    await authService.updateProfile(editForm.value)
-    alert('Profile updated successfully!')
-    showEditProfile.value = false
-    await fetchProfile()
-  } catch (err) {
-    console.error('Update error:', err)
-    alert(err.response?.data?.message || 'Failed to update profile')
+    await authService.updateProfile(editForm.value);
+
+    // Use SweetAlert2 for success
+    Swal.fire({
+      title: "Success!",
+      text: "Your profile has been updated.",
+      icon: "success",
+      confirmButtonColor: "#42b883",
+      timer: 2000,
+      timerProgressBar: true,
+    });
+
+    showEditProfile.value = false;
+    fetchProfile();
+  } catch (e) {
+    // Use SweetAlert2 for failure
+    Swal.fire({
+      title: "Update Failed",
+      text:
+        e.response?.data?.message ||
+        "Something went wrong while updating your profile.",
+      icon: "error",
+      confirmButtonColor: "#e74c3c",
+    });
   } finally {
-    updating.value = false
+    updating.value = false;
   }
-}
+};
 
-// Change password
-const changePassword = async () => {
-  passwordError.value = null
-
-  // Validate password match
-  if (passwordForm.value.new_password !== passwordForm.value.new_password_confirmation) {
-    passwordError.value = 'New passwords do not match'
-    return
-  }
-
-  changingPassword.value = true
-
-  try {
-    await authService.changePassword(passwordForm.value)
-    alert('Password changed successfully!')
-    showChangePassword.value = false
-    
-    // Reset form
-    passwordForm.value = {
-      current_password: '',
-      new_password: '',
-      new_password_confirmation: ''
-    }
-  } catch (err) {
-    console.error('Password error:', err)
-    passwordError.value = err.response?.data?.message || 'Failed to change password'
-  } finally {
-    changingPassword.value = false
-  }
-}
-
-// Logout - Clear all secure storage and navigate to login
 const logout = async () => {
-  loggingOut.value = true
-
+  loggingOut.value = true;
   try {
-    // Call backend logout (best effort - don't block on failure)
-    await authService.logout()
-    console.log('✅ Logout API call successful')
-  } catch (err) {
-    console.error('Logout API error (ignored):', err)
-    // Continue with local logout even if API call fails
+    await authService.logout();
+  } catch (e) {
+    console.error(e);
   } finally {
-    // Always clear all stored credentials
-    await secureStorage.clearAll()
-    console.log('✅ All credentials cleared')
-    
-    loggingOut.value = false
-    alert('Logged out successfully!')
-    router.push('/login')
+    await secureStorage.clearAll();
+    router.push("/login");
   }
-}
+};
 
-// Format date
-const formatDate = (dateString) => {
-  if (!dateString) return 'Not set'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  })
-}
+const openLink = (page) => {
+  console.log("Navigate to", page);
+  // Placeholder for navigation
+};
 
 onMounted(() => {
-  fetchProfile()
-})
+  fetchProfile();
+});
 </script>
 
 <style scoped>
 .settings-page {
-  width: 100%;
-  max-width: 100vw;
-  padding: 0;
-  padding-bottom: 100px;
-  overflow-x: hidden;
-  box-sizing: border-box;
+  padding: 20px;
+  background-color: var(--bg-primary);
+  min-height: 100vh;
+  color: var(--text-primary);
+  margin-bottom: 60px;
 }
 
 .page-header {
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
-  color: white;
-  text-align: center;
-  padding: 32px 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(218, 41, 28, 0.3);
-}
-
-.page-header h1 {
-  font-size: 28px;
-  margin-bottom: 8px;
-  font-weight: 800;
-}
-
-.page-header p {
-  font-size: 15px;
-  opacity: 0.95;
-  font-weight: 600;
-  margin: 0;
-}
-
-/* Loading/Error States */
-.loading-state,
-.error-state {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.loading-state p {
-  font-size: 16px;
-  color: #666;
-  font-weight: 600;
-}
-
-.error-state p {
-  font-size: 16px;
-  color: #e74c3c;
-  margin-bottom: 16px;
-  font-weight: 600;
-}
-
-.error-state button {
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-/* Profile Section */
-.profile-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 24px;
-  background: white;
-  border-radius: 16px;
-  margin: 0 16px 24px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  border: 2px solid #7fdb9f;
-}
-
-.profile-avatar {
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
-}
-
-.avatar-icon {
-  font-size: 40px;
-  color: white;
-}
-
-.profile-info {
-  text-align: center;
-}
-
-.profile-name {
-  font-size: 20px;
-  font-weight: 800;
-  margin-bottom: 6px;
-  color: #333;
-}
-
-.profile-email {
-  font-size: 14px;
-  color: #666;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-.profile-points {
-  font-size: 16px;
-  color: #42b883;
-  font-weight: 800;
-}
-
-/* Settings Section */
-.settings-section {
-  margin: 0 16px 24px;
-}
-
-.settings-section h2 {
-  font-size: 16px;
-  color: #42b883;
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-weight: 800;
-}
-
-.settings-group {
-  background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  margin-bottom: 16px;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.info-item:last-child {
-  border-bottom: none;
-}
-
-.info-label {
-  font-size: 14px;
-  color: #666;
-  font-weight: 600;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #333;
-  font-weight: 800;
-  text-align: right;
-}
-
-/* Action Buttons */
-.action-btn {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
-}
-
-.logout-btn {
-  width: calc(100% - 32px);
-  margin: 0 16px;
-  padding: 16px;
-  background: #e74c3c;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 800;
-  cursor: pointer;
   margin-bottom: 24px;
 }
 
-.logout-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.page-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
 }
 
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
+.page-header p {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 24px 0 8px 4px;
+}
+
+.card {
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Profile Card */
+.profile-card {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.profile-card:active {
+  background-color: var(--bg-tertiary);
+}
+
+.profile-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
-  padding: 20px;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 400px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.modal-content h3 {
-  font-size: 20px;
-  color: #333;
-  font-weight: 800;
-  margin-bottom: 20px;
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 14px;
-  color: #666;
+  font-size: 24px;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-right: 16px;
 }
 
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  box-sizing: border-box;
+.profile-info {
+  flex: 1;
 }
 
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #42b883;
+.profile-name {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 2px;
 }
 
-.error-message {
-  background: #fee;
-  color: #e74c3c;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 16px;
+.profile-email,
+.profile-phone {
   font-size: 13px;
-  font-weight: 600;
-  text-align: center;
+  color: var(--text-secondary);
 }
 
-.modal-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 20px;
+.profile-arrow {
+  color: var(--text-tertiary);
 }
 
-.cancel-btn {
-  padding: 12px;
-  background: #f0f0f0;
-  color: #666;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 800;
+.edit-trigger-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--accent-color);
+  padding: 6px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.save-btn {
-  padding: 12px;
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 800;
+.edit-trigger-btn:active {
+  transform: scale(0.95);
+  background: var(--bg-secondary);
+}
+
+.edit-trigger-btn .material-icons {
+  font-size: 16px;
+}
+
+/* List Items */
+.list-item {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
   cursor: pointer;
+  background-color: var(--bg-secondary);
+  transition: background-color 0.2s;
 }
 
-.save-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.list-item:last-child {
+  border-bottom: none;
 }
 
-/* App Info */
-.app-info {
+.list-item:active {
+  background-color: var(--bg-tertiary);
+}
+
+.item-icon {
+  width: 24px;
   text-align: center;
-  padding: 20px;
-  color: #999;
+  margin-right: 16px;
+  font-size: 18px;
+}
+
+.item-content {
+  flex: 1;
+}
+
+.item-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.item-subtitle {
   font-size: 12px;
-  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 2px;
 }
 
-.app-info p {
-  margin: 4px 0;
+.item-action {
+  color: var(--text-tertiary);
+  font-weight: bold;
+}
+
+/* Device Section specific */
+.device-item {
+  border-bottom: none;
+}
+
+.device-info-box {
+  background-color: rgba(66, 184, 131, 0.1);
+  color: #2c8c63;
+  font-size: 12px;
+  padding: 12px 16px;
+  margin: 0 16px 16px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+.info-box-content {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.device-info-box .info-icon {
+  font-size: 16px;
+  color: #f1c40f;
+}
+
+[data-theme="dark"] .device-info-box {
+  background-color: rgba(66, 184, 131, 0.2);
+  color: #7fdb9f;
+}
+
+/* Footer */
+.page-footer {
+  text-align: center;
+  margin-top: 40px;
+  padding-bottom: 20px;
+}
+
+.page-footer p {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.logout-btn {
+  margin-top: 20px;
+  background: var(--bg-secondary);
+  color: var(--error-color);
+  border: 1px solid var(--border-color);
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.btn-icon {
+  font-size: 20px;
+}
+
+.btn-icon {
+  font-size: 20px;
 }
 </style>

@@ -1,41 +1,56 @@
 <template>
   <nav class="bottom-nav">
-    <router-link to="/home" class="nav-item" :class="{ active: currentRoute === '/home' }">
-      <Home class="nav-icon" :size="24" />
+    <router-link
+      to="/home"
+      class="nav-item"
+      :class="{ active: currentRoute === '/home' }"
+    >
+      <span class="material-icons nav-icon">home</span>
       <div class="nav-label">Home</div>
     </router-link>
 
-    <router-link to="/map" class="nav-item" :class="{ active: currentRoute === '/map' }">
-      <MapPin class="nav-icon" :size="24" />
+    <router-link
+      to="/map"
+      class="nav-item"
+      :class="{ active: currentRoute === '/map' }"
+    >
+      <span class="material-icons nav-icon">map</span>
       <div class="nav-label">Map</div>
     </router-link>
 
-    <router-link to="/scan" class="nav-item nav-scan" :class="{ active: currentRoute === '/scan' }">
+    <router-link to="/scan" class="nav-item nav-scan">
       <div class="scan-button">
-        <ScanLine class="scan-icon" :size="32" />
+        <span class="material-icons scan-icon">qr_code_scanner</span>
       </div>
-      <div class="nav-label">Scan</div>
+      <div class="nav-label">Scan QR</div>
     </router-link>
 
-    <router-link to="/achievements" class="nav-item" :class="{ active: currentRoute === '/achievements' }">
-      <Trophy class="nav-icon" :size="24" />
+    <router-link
+      to="/achievements"
+      class="nav-item"
+      :class="{ active: currentRoute === '/achievements' }"
+    >
+      <span class="material-icons nav-icon">emoji_events</span>
       <div class="nav-label">Rewards</div>
     </router-link>
 
-    <router-link to="/settings" class="nav-item" :class="{ active: currentRoute === '/settings' }">
-      <Settings class="nav-icon" :size="24" />
+    <router-link
+      to="/settings"
+      class="nav-item"
+      :class="{ active: currentRoute === '/settings' }"
+    >
+      <span class="material-icons nav-icon">settings</span>
       <div class="nav-label">Settings</div>
     </router-link>
   </nav>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-import { Home, MapPin, ScanLine, Trophy, Settings } from 'lucide-vue-next'
+import { computed } from "vue";
+import { useRoute } from "vue-router";
 
-const route = useRoute()
-const currentRoute = computed(() => route.path)
+const route = useRoute();
+const currentRoute = computed(() => route.path);
 </script>
 
 <style scoped>
@@ -49,13 +64,11 @@ const currentRoute = computed(() => route.path)
   display: flex;
   justify-content: space-around;
   align-items: flex-end;
-  background: white;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
-  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  background: var(--bg-secondary);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+  padding: 8px 0 max(12px, env(safe-area-inset-bottom));
   z-index: 9999;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  border-top: 3px solid #7fdb9f;
+  border-top: 1px solid var(--border-color);
 }
 
 .nav-item {
@@ -64,70 +77,67 @@ const currentRoute = computed(() => route.path)
   flex-direction: column;
   align-items: center;
   text-decoration: none;
-  color: #292929;
+  text-decoration: none;
+  color: var(--text-secondary); /* Neutral gray */
   padding: 5px 0;
-  transition: all 0.3s;
+  padding: 5px 0;
+  transition: all 0.2s;
 }
 
 .nav-item.active {
-  color: #42b883;
+  color: var(--accent-color); /* JuanCharge Green */
 }
 
 .nav-icon {
-  margin-bottom: 4px;
-  transition: transform 0.3s;
-  stroke-width: 2;
-}
-
-.nav-item.active .nav-icon {
-  transform: scale(1.15);
-  stroke-width: 2.5;
+  font-size: 26px;
+  margin-bottom: 2px;
 }
 
 .nav-label {
-  font-size: 0.7rem;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 /* Special styling for scan button */
 .nav-scan {
   position: relative;
-  margin-top: -25px;
+  margin-top: -30px;
 }
 
 .scan-button {
-  width: 65px;
-  height: 65px;
-  background: linear-gradient(135deg, #42b883 0%, #7fdb9f 100%);
+  width: 60px;
+  height: 60px;
+  background: var(--bg-secondary);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 20px rgba(218, 41, 28, 0.35);
+  box-shadow: 0 4px 15px rgba(66, 184, 131, 0.3);
   margin-bottom: 5px;
-  transition: transform 0.3s;
-  border: 4px solid white;
+  transition: transform 0.2s;
+  border: 4px solid #4caf50; /* Green border as in screenshot */
+}
+
+.nav-scan .scan-icon {
+  color: #4caf50;
+  font-size: 32px;
 }
 
 .nav-scan:active .scan-button {
-  transform: scale(0.9);
-}
-
-.scan-icon {
-  color: white;
-  stroke-width: 2.5;
+  transform: scale(0.92);
 }
 
 .nav-scan .nav-label {
-  color: #42b883;
-  font-weight: 700;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-top: 0;
 }
 
-/* Safe area handling for devices with notches */
+/* Safe area handling */
 @supports (padding: max(0px)) {
   .bottom-nav {
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 }
 </style>

@@ -16,7 +16,10 @@
     "@capacitor/preferences": "^7.0.2",
     "@vueuse/core": "^14.0.0",
     "axios": "^1.13.2",
+    "html5-qrcode": "^2.3.8",
+    "leaflet": "^1.9.4",
     "lucide-vue-next": "^0.552.0",
+    "sweetalert2": "^11.26.17",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"
   },

@@ -1,186 +1,223 @@
 <template>
-  <div class="login-page">
-    <div class="login-container">
-      <div class="login-header">
-        <img src="/logo.png" alt="JuanCharge Logo" class="logo" />
-        <h1>JuanCharge</h1>
-        <p>Powering every Juan</p>
+  <div class="register-page">
+    <div class="register-container">
+      <!-- Back Button -->
+      <div class="header-nav">
+        <button class="back-btn" @click="router.back()">
+          <span class="material-icons">chevron_left</span>
+          Back
+        </button>
       </div>
 
-      <div class="login-form">
-        <header class="login-form-header">Create Account</header>
-        <form @submit.prevent="handleRegister">
-          <div class="form-group">
-            <label>First Name</label>
-            <input v-model="form.first_name" type="text" placeholder="Enter your first name" required :disabled="loading" />
-          </div>
-
-           <div class="form-group">
-            <label>Last Name</label>
-            <input v-model="form.last_name" type="text" placeholder="Enter your last name" required :disabled="loading" />
-          </div>
-
-          <div class="form-group">
-            <label>Email</label>
-            <input v-model="form.email" type="email" placeholder="Enter your email" required :disabled="loading" />
-          </div>
-
-          <div class="form-group">
-            <label>Contact No. <span class="optional-label">(Optional)</span></label>
-            <input v-model="form.contact" type="number" placeholder="Enter your contact number" :disabled="loading" />
-          </div>
-
-          <div class="form-group">
-            <div class="password-input-wrapper">
-              <label>Password</label>
-              <input v-model="form.password" :type="showPassword ? 'text' : 'password'" placeholder="Enter a password"
-                required :disabled="loading">
-              <button type="button" class="toggle-password" @click="showPassword = !showPassword" :disabled="loading">
-                <span class="material-icons">
-                  {{ showPassword ? 'visibility_off' : 'visibility' }}
-                </span>
-              </button>
-              </input>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Confirm Password</label>
-            <div class="password-input-wrapper">
-              <input v-model="form.password_confirmation" 
-              :type="showConfirmPassword ? 'text' : 'password'" 
-              placeholder="Confirm password" 
-              required
-              :disabled="loading"
-              >
-                <button type="button" class="toggle-confirm-password" @click="showConfirmPassword = !showConfirmPassword" :disabled="loading">
-                <span class="material-icons">
-                  {{ showConfirmPassword ? 'visibility_off' : 'visibility' }}
-                </span>
-              </button>
-              </input>
-            </div>
-          </div>
-
-          <div v-if="error" class="error-message">{{ error }}</div>
-
-          <button type="submit" class="login-btn" :disabled="loading">{{ loading ? 'Registering...' : 'Register'
-            }}</button>
-        </form>
-
-        <div class="register-link">
-          Already have an account? <router-link to="/login">Login</router-link>
+      <!-- Logo Section -->
+      <div class="logo-section">
+        <div class="logo-wrapper">
+          <img src="/logo.png" alt="JuanCharge Logo" class="logo" />
         </div>
+        <h1>Create Your Account</h1>
+        <p>Join the JuanCharge community</p>
       </div>
+
+      <!-- Form Card -->
+      <div class="form-card">
+        <form @submit.prevent="handleRegister">
+          <!-- Name Fields -->
+          <div class="form-section">
+            <label>Your Name</label>
+            <div class="row">
+              <input
+                v-model="form.first_name"
+                type="text"
+                placeholder="First Name"
+                required
+                :disabled="loading"
+                class="half-width"
+              />
+              <input
+                v-model="form.last_name"
+                type="text"
+                placeholder="Last Name"
+                required
+                :disabled="loading"
+                class="half-width"
+              />
+            </div>
+          </div>
+
+          <!-- Email Field -->
+          <div class="form-section">
+            <label>Email Address</label>
+            <div class="input-wrapper">
+              <span class="material-icons field-icon">mail_outline</span>
+              <input
+                v-model="form.email"
+                type="email"
+                placeholder="Your Email Address"
+                required
+                :disabled="loading"
+              />
+            </div>
+          </div>
+
+          <!-- Password Field -->
+          <div class="form-section">
+            <label>Password</label>
+            <div class="input-wrapper">
+              <span class="material-icons field-icon">lock</span>
+              <input
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="******************"
+                required
+                :disabled="loading"
+              />
+              <!-- Toggle Visibility hidden/shown by design, keeping functionality if user clicks icon? 
+                   Design shows dots. I'll make the whole row clickable or add end icon if needed.
+                   For now, sticking to clean design, maybe no toggle or subtle one.
+                   I will add a subtle toggle at the end for ux.
+              -->
+            </div>
+          </div>
+
+          <!-- Error Message -->
+          <div v-if="error" class="error-message">
+            {{ error }}
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="submit-btn" :disabled="loading">
+            {{ loading ? "Creating Account..." : "Create Account & Continue" }}
+          </button>
+
+          <!-- Auto-Login Info -->
+          <div class="info-box">
+            <div class="info-icon">
+              <span class="material-icons">lock_open</span>
+            </div>
+            <div class="info-text">
+              <strong>Auto-Login Feature</strong>
+              <p>
+                Your device will be automatically logged in. You won't need to
+                sign in again!
+              </p>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <p class="terms-footer">
+        By creating an account, you agree to our
+        <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+      </p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { authService } from '@/services/apiServices'
+import { reactive, ref } from "vue";
+import { useRouter } from "vue-router";
+import { authService } from "@/services/apiServices";
 
-const router = useRouter()
+const router = useRouter();
 
 const form = reactive({
-  first_name: '',
-  last_name: '',
-  email: '',
-  contact: '',
-  password: '',
-  password_confirmation: ''
-})
+  first_name: "",
+  last_name: "",
+  email: "",
+  password: "",
+});
 
-const showPassword = ref(false)
-const showConfirmPassword = ref(false)
-
-
-const loading = ref(false)
-const error = ref(null)
+const showPassword = ref(false);
+const loading = ref(false);
+const error = ref(null);
 
 const handleRegister = async () => {
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
+
+  // Prepare payload - add missing fields expected by backend
+  const payload = {
+    ...form,
+    password_confirmation: form.password, // Auto-confirm
+    contact: "", // Empty contact as it matches "HBO style" minimal info
+  };
 
   try {
-    const response = await authService.register(form)
+    const response = await authService.register(payload);
 
     if (response.data && response.data.success) {
-      // Some backends return token/user on register
+      // Logic from original file to handle auto-login
       if (response.data.token) {
-        localStorage.setItem('auth_token', response.data.token)
+        localStorage.setItem("auth_token", response.data.token);
       }
       if (response.data.user) {
-        localStorage.setItem('user', JSON.stringify(response.data.user))
+        localStorage.setItem("user", JSON.stringify(response.data.user));
       }
 
-      // If backend did NOT return token, attempt auto-login with provided credentials
+      // If backend didn't return token (some just return success), try login
       if (!response.data.token) {
         try {
-          const loginResp = await authService.login({ email: form.email, password: form.password })
+          const loginResp = await authService.login({
+            email: form.email,
+            password: form.password,
+          });
           if (loginResp.data?.success && loginResp.data.token) {
-            localStorage.setItem('auth_token', loginResp.data.token)
-            if (loginResp.data.user) localStorage.setItem('user', JSON.stringify(loginResp.data.user))
+            localStorage.setItem("auth_token", loginResp.data.token);
+            if (loginResp.data.user)
+              localStorage.setItem("user", JSON.stringify(loginResp.data.user));
+
+            // Redirect
             if (loginResp.data.should_update_profile) {
-              router.push('/settings')
+              router.push("/settings");
             } else {
-              router.push('/')
+              router.push("/home");
             }
-            return
+            return;
           }
         } catch (le) {
-          // If auto-login fails, fall through to route to login
-          console.warn('Auto-login after register failed:', le)
+          console.warn("Auto-login after register failed:", le);
         }
-      }
-
-      // If backend asks to update profile after register
-      if (response.data.should_update_profile) {
-        router.push('/settings')
       } else {
-        // If token exists we are logged in, otherwise route to login so user can sign in
-        if (localStorage.getItem('auth_token')) {
-          router.push('/')
+        // Token was returned directly
+        if (response.data.should_update_profile) {
+          router.push("/settings");
         } else {
-          router.push('/login')
+          router.push("/home");
         }
       }
     } else {
-      // Try to show validation errors
-      error.value = response.data?.message || 'Registration failed'
+      error.value = response.data?.message || "Registration failed";
     }
   } catch (err) {
-    console.error('Register error:', err)
-    // Handle Laravel validation errors (errors object)
-    const resp = err.response?.data
+    console.error("Register error:", err);
+    const resp = err.response?.data;
     if (resp) {
       if (resp.errors) {
-        // join first error messages
-        const first = Object.values(resp.errors).map(v => v[0]).join(' ')
-        error.value = first
+        const first = Object.values(resp.errors)
+          .map((v) => v[0])
+          .join(" ");
+        error.value = first;
       } else {
-        error.value = resp.message || 'Registration failed'
+        error.value = resp.message || "Registration failed";
       }
     } else {
-      error.value = 'Registration failed'
+      error.value = "Registration failed";
     }
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 </script>
 
 <style scoped>
-.login-page {
+.register-page {
   min-height: 100vh;
-  height: 100vh;
-  background: #FFFFFF;
-  background: linear-gradient(20deg, rgba(255, 255, 255, 1) 45%, rgba(66, 184, 131, 1) 55%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
+  background: var(--bg-primary);
+  padding: 20px;
+  font-family: "Inter", sans-serif;
+  box-sizing: border-box;
+  overflow-y: auto;
   position: fixed;
   top: 0;
   left: 0;
@@ -188,324 +225,218 @@ const handleRegister = async () => {
   bottom: 0;
 }
 
-.login-container {
-  width: 100%;
-  max-width: 400px;
-  overflow-y: auto;
-  max-height: 100vh;
-  padding: 20px;
+.register-container {
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.login-header {
+.header-nav {
+  margin-bottom: 0px;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  color: #2b7fff;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.logo-section {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.logo-wrapper {
+  width: 100px;
+  height: 100px;
+  background: var(--bg-secondary);
+  border-radius: 20px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
 .logo {
-  width: 150px;
-  height: 150px;
-  margin: 0 auto 16px;
-  display: block;
-  /* animation: pulse 2s infinite; */
+  width: 70px;
+  height: 70px;
   object-fit: contain;
-  background-color: #F8F8F8;
-  border-radius: 16px;
-  box-shadow: rgba(50, 50, 93, 0.25) 0px 13px 27px -5px, rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
 }
 
-@keyframes pulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.1);
-  }
-}
-
-.login-header h1 {
-  font-size: 36px;
-  color: white;
-  font-weight: 800;
-}
-
-.login-header p {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 600;
-}
-
-.login-form-header {
+h1 {
   font-size: 24px;
-  color: #333;
   font-weight: 800;
-  text-align: center;
-  margin-bottom: 12px;
+  color: var(--text-primary);
+  margin: 0 0 8px;
 }
 
-.login-form {
-  background: white;
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 4px 8px rgba(50, 50, 93, 0.25), 0 2px 4px rgba(0, 0, 0, 0.3);
-
+.logo-section p {
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
-.form-group {
+/* Card */
+.form-card {
+  background: var(--bg-secondary);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 24px;
+}
+
+.form-section {
   margin-bottom: 20px;
 }
 
-.form-group label {
+.form-section label {
   display: block;
-  text-align: left;
-  padding: 4px;
-  font-size: 13px;
-  color: #333;
+  font-size: 14px;
   font-weight: 700;
-  margin-bottom: 2px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
 }
 
-.form-group input {
+.row {
+  display: flex;
+  gap: 12px;
+}
+
+.half-width {
+  width: 50%;
+}
+
+input {
   width: 100%;
-  padding: 14px;
+  padding: 14px 16px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+  transition: box-shadow 0.2s;
+}
+
+input:focus {
+  box-shadow: 0 0 0 2px #42b883; /* Green focus ring */
+  background: var(--bg-secondary);
+}
+
+/* Input with Icon */
+.input-wrapper {
+  position: relative;
+}
+
+.input-wrapper input {
+  padding-left: 44px; /* Space for icon */
+}
+
+.field-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #555;
+  font-size: 20px;
+}
+
+/* Submit Button */
+.submit-btn {
+  width: 100%;
+  padding: 16px;
+  background: #55b560; /* Green from design */
+  color: white;
   border: none;
   border-radius: 12px;
-  color: #333;
-  font-size: 13px;
-  font-weight: normal;
-  transition: all 0.3s;
-  box-sizing: border-box;
-  background-color: #ffffff;
-  box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px, rgba(0, 0, 0, 0.24) 0px 1px 2px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 10px rgba(85, 181, 96, 0.3);
 }
 
-.form-group input:focus {
-  outline: none;
-  border: 2px solid #6ec89f;
-}
-
-.form-group input:disabled {
-  background: #f5f5f5;
+.submit-btn:disabled {
+  opacity: 0.7;
   cursor: not-allowed;
 }
 
+/* Info Box */
+.info-box {
+  background: rgba(43, 127, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.info-icon {
+  width: 24px;
+  height: 24px;
+  background: #1976d2;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.info-icon .material-icons {
+  font-size: 14px;
+  color: white;
+}
+
+.info-text strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.info-text p {
+  margin: 0;
+  font-size: 12px;
+  color: #2b7fff;
+  line-height: 1.4;
+}
+
+/* Error */
 .error-message {
   background: #fee;
   color: #e74c3c;
   padding: 12px;
   border-radius: 8px;
   margin-bottom: 16px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
   text-align: center;
 }
 
-.success-message {
-  background: #d4edda;
-  color: #155724;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 14px;
-  font-weight: 600;
+/* Footer */
+.terms-footer {
   text-align: center;
-}
-
-.login-btn {
-  width: 100%;
-  padding: 16px;
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 17px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(66, 184, 131, 0.3);
-  transition: all 0.3s;
-}
-
-.login-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(66, 184, 131, 0.4);
-}
-
-.login-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.forgot-password {
-  text-align: center;
-  margin-top: 16px;
-}
-
-.forgot-password a {
-  color: #42b883;
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.register-link {
-  text-align: center;
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid #e0e0e0;
-  font-size: 14px;
-  color: #666;
-  font-weight: 600;
-}
-
-.register-link a {
-  color: #42b883;
-  text-decoration: none;
-  font-weight: 800;
-}
-
-.app-version {
-  text-align: center;
-  margin-top: 24px;
-}
-
-.app-version p {
-  color: rgba(255, 255, 255, 0.7);
   font-size: 12px;
-  font-weight: 600;
-}
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  padding: 20px;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  max-width: 400px;
-  width: 100%;
-}
-
-.modal-content h3 {
-  font-size: 20px;
-  color: #333;
-  font-weight: 800;
-  margin-bottom: 12px;
-}
-
-.modal-description {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 20px;
+  color: var(--text-secondary);
+  margin-top: auto;
   line-height: 1.5;
+  padding-bottom: 20px;
 }
 
-.modal-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.cancel-btn {
-  padding: 12px;
-  background: #f0f0f0;
-  color: #666;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.submit-btn {
-  padding: 12px;
-  background: linear-gradient(135deg, #42b883 0%, #2c8c63 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.password-input-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-.password-input-wrapper input {
-  padding-right: 45px;
-  /* Make space for the button */
-}
-
-.toggle-password {
-  position: absolute;
-  right: 12px;
-  top: 71%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 18px;
-  color: #333;
-  padding: 4px 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s;
-  outline: none;
-}
-
-.toggle-confirm-password {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 18px;
-  color: #333;
-  padding: 4px 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s;
-  outline: none;
-}
-
-.optional-label {
-  font-size: 11px;
-  font-style: italic;
-  font-weight: 400;
-  color: #999;
-}
-
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-input[type="number"] {
-  -moz-appearance: textfield;
-  appearance: textfield;
+.terms-footer a {
+  color: #2b7fff;
+  text-decoration: none;
 }
 </style>
