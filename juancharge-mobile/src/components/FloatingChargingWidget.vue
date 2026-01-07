@@ -119,9 +119,17 @@ const handleAddTime = async () => {
   loading.value = true;
   try {
     const portId =
-      sessionState.activeSession.kiosk_id || sessionState.activeSession.port_id;
-    await chargingService.redeemPoints(1, portId);
-    toast.success("Time extended!");
+      sessionState.activeSession.kiosk_id ||
+      sessionState.activeSession.port_id ||
+      sessionState.activeSession.session?.kiosk_id ||
+      sessionState.activeSession.session?.port_id;
+    const sessionId =
+      sessionState.activeSession.active_session_id ||
+      sessionState.activeSession.session_id ||
+      sessionState.activeSession.id;
+
+    await chargingService.redeemPoints(10, portId, sessionId);
+    toast.success("Time extended! (+10 pts)");
     await checkActiveSession();
   } catch (err) {
     toast.error("Error extending time.");
@@ -138,6 +146,7 @@ const handleEndSession = async () => {
   try {
     const sessionId =
       sessionState.activeSession.active_session_id ||
+      sessionState.activeSession.session_id ||
       sessionState.activeSession.id;
     await chargingService.cancelSession(sessionId);
     toast.success("Session ended.");

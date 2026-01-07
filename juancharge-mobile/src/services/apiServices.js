@@ -80,10 +80,11 @@ export const chargingService = {
   getActiveSession() {
     return api.get("/charging/active");
   },
-  redeemPoints(points, kioskId) {
+  redeemPoints(points, kioskId, sessionId = null) {
     return api.post("/charging/redeem", {
       points,
       kiosk_id: kioskId,
+      session_id: sessionId,
     });
   },
   cancelSession(sessionId) {

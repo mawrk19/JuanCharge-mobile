@@ -52,9 +52,9 @@
             <button class="manual-submit-btn" @click="handleManualEntry">
               Continue
             </button>
-            <!-- <button class="simulate-btn" @click="simulateSpecificScan">
+            <button class="simulate-btn" @click="simulateSpecificScan">
               Simulate Scan
-            </button> -->
+            </button>
             <button class="manual-cancel-btn" @click="showManualInput = false">
               Cancel
             </button>
@@ -307,9 +307,9 @@
           </div>
         </div>
 
-        <button class="extend-btn" @click="showExtendOptions = true">
+        <button class="extend-btn" @click="handleAddTime" :disabled="loading">
           <span class="material-icons">add_circle</span>
-          Extend Time (+1 pt)
+          Extend Time (+10 pts)
         </button>
 
         <button class="end-session-btn" @click="confirmEndSession">
@@ -545,6 +545,39 @@ const addPreset = (amount) => {
   }
 };
 
+const handleAddTime = async () => {
+  if (loading.value) return;
+
+  const portId =
+    sessionState.activeSession?.kiosk_id ||
+    sessionState.activeSession?.port_id ||
+    sessionState.activeSession?.session?.kiosk_id ||
+    sessionState.activeSession?.session?.port_id ||
+    scannedPort.value;
+
+  if (!portId) {
+    toast.error("No active session port found.");
+    return;
+  }
+
+  loading.value = true;
+  try {
+    const sessionId =
+      sessionState.activeSession?.active_session_id ||
+      sessionState.activeSession?.session_id ||
+      sessionState.activeSession?.id;
+
+    await chargingService.redeemPoints(10, portId, sessionId);
+    toast.success("Time extended! (+10 pts)");
+    await checkActiveSession();
+  } catch (err) {
+    console.error("Failed to extend time", err);
+    toast.error("Failed to extend time. Please try again.");
+  } finally {
+    loading.value = false;
+  }
+};
+
 // API Integration
 const handleRedeem = async () => {
   const points = parseInt(pointsToRedeem.value);
@@ -584,6 +617,19 @@ const handleRedeem = async () => {
     }
   } catch (err) {
     console.error("Redemption failed", err);
+
+    // Handle "Already have active session" specifically
+    const errorData = err.response?.data;
+    if (
+      errorData &&
+      errorData.message === "You already have an active charging session"
+    ) {
+      toast.info("Resuming your active session...");
+      await checkActiveSession();
+      router.push("/home");
+      return;
+    }
+
     toast.error("Failed to start charging session. Please try again.");
   } finally {
     redeeming.value = false;
@@ -610,26 +656,47 @@ const startSessionTimer = () => {
   }, 1000);
 };
 
-const confirmEndSession = () => {
+const confirmEndSession = async () => {
   if (confirm("Are you sure you want to end this charging session?")) {
-    endSession();
+    await endSession();
   }
 };
 
-const endSession = () => {
-  if (sessionTimer) {
-    clearInterval(sessionTimer);
-    sessionTimer = null;
+const endSession = async () => {
+  if (loading.value) return;
+  loading.value = true;
+
+  try {
+    const sessionId =
+      sessionState.activeSession?.active_session_id ||
+      sessionState.activeSession?.session_id ||
+      sessionState.activeSession?.id;
+
+    if (sessionId) {
+      await chargingService.cancelSession(sessionId);
+      toast.success("Charging session ended. Thank you!");
+    }
+
+    if (sessionTimer) {
+      clearInterval(sessionTimer);
+      sessionTimer = null;
+    }
+
+    timeRemaining.value = 0;
+    sessionPointsUsed.value = 0;
+    scannedPort.value = "";
+
+    // Trigger global session check to update UI
+    await checkActiveSession();
+
+    // Return to landing/scanning
+    currentState.value = "landing";
+  } catch (err) {
+    console.error("Failed to end session", err);
+    toast.error("Failed to end charging session. Please try again.");
+  } finally {
+    loading.value = false;
   }
-
-  timeRemaining.value = 0;
-  sessionPointsUsed.value = 0;
-  scannedPort.value = "";
-
-  // Return to landing/scanning
-  currentState.value = "landing";
-
-  alert("Charging session ended. Thank you!");
 };
 
 // Initialization
