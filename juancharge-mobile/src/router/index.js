@@ -9,6 +9,7 @@ import Leaderboards from "../views/Leaderboards.vue";
 import EditProfile from "../views/EditProfile.vue";
 import HelpCenter from "../views/HelpCenter.vue";
 import About from "../views/About.vue";
+import History from "../views/History.vue";
 
 import Splash from "../views/Splash.vue";
 import GetStarted from "../views/GetStarted.vue";
@@ -63,6 +64,12 @@ const routes = [
     name: "Leaderboards",
     component: Leaderboards,
     meta: { title: "Leaderboards", requiresAuth: true },
+  },
+  {
+    path: "/history",
+    name: "History",
+    component: History,
+    meta: { title: "History", requiresAuth: true },
   },
   {
     path: "/settings",

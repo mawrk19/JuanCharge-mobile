@@ -115,10 +115,71 @@
       <div class="section-container">
         <div class="section-header">
           <h3 class="section-title">Recent Activity</h3>
-          <a href="#" class="see-all">See All</a>
+          <a href="#" class="see-all" @click.prevent="router.push('/history')"
+            >See All</a
+          >
         </div>
 
-        <div class="activity-card-empty">
+        <div v-if="activities.length > 0" class="activity-list">
+          <div
+            v-for="activity in activities.slice(0, 5)"
+            :key="activity.id"
+            class="activity-card-glass"
+            :class="{ expanded: expandedActivityId === activity.id }"
+            @click="toggleActivity(activity.id)"
+          >
+            <div class="card-main-content">
+              <div :class="['activity-icon-container', activity.type]">
+                <span class="material-icons">{{
+                  getTransactionIcon(activity.type)
+                }}</span>
+              </div>
+              <div class="activity-info">
+                <div class="activity-header-row">
+                  <p class="activity-name">{{ activity.title }}</p>
+                  <div class="activity-points-pill">
+                    <span
+                      :class="[
+                        'points-value',
+                        activity.transaction_type === 'credit'
+                          ? 'credit'
+                          : 'debit',
+                      ]"
+                    >
+                      {{ activity.transaction_type === "credit" ? "+" : "-"
+                      }}{{ activity.amount }}
+                    </span>
+                  </div>
+                </div>
+                <div class="activity-meta">
+                  <span class="activity-date">
+                    {{ formatDate(activity.created_at) }},
+                    {{ formatTime(activity.created_at) }}
+                  </span>
+                  <div class="balance-pill">
+                    <span class="pill-label">Balance:</span>
+                    <span class="pill-value">{{ activity.points_after }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Expanded Details -->
+            <div v-if="expandedActivityId === activity.id" class="card-details">
+              <div class="divider"></div>
+              <div class="detail-item">
+                <span class="detail-label">Transaction ID:</span>
+                <span class="detail-value">{{ activity.id }}</span>
+              </div>
+              <div v-if="activity.description" class="detail-item mt-2">
+                <span class="detail-label">Description:</span>
+                <p class="detail-desc">{{ activity.description }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="activity-card-empty">
           <div class="empty-icon">
             <span class="material-icons">history</span>
           </div>
@@ -164,16 +225,23 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { secureStorage } from "@/services/secureStorage";
-import { dashboardService } from "@/services/apiServices";
+import {
+  dashboardService,
+  chargingService,
+  pointsService,
+} from "@/services/apiServices";
 
 import { sessionState } from "@/services/sessionState";
 
 const router = useRouter();
 const user = ref(null);
 const stats = ref({});
+const activities = ref([]);
+const historyLoading = ref(false);
+const expandedActivityId = ref(null);
 
 const activeSession = computed(() => sessionState.activeSession);
 const timeRemaining = computed(() => {
@@ -224,12 +292,63 @@ onMounted(async () => {
     };
   }
 
-  // Start polling active session (now handled globally, but we can trigger immediate check)
-  // sessionState polling handles this automatically
+  // Get Recent Activity
+  fetchRecentActivity();
 });
 
-import { onUnmounted } from "vue"; // Ensure imported
-import { chargingService } from "@/services/apiServices"; // Ensure imported
+const fetchRecentActivity = async () => {
+  historyLoading.value = true;
+  try {
+    const response = await pointsService.getTransactions({ limit: 5 });
+    if (response.data && response.data.data) {
+      activities.value = response.data.data;
+    }
+  } catch (error) {
+    console.warn("Failed to fetch recent activity:", error);
+  } finally {
+    historyLoading.value = false;
+  }
+};
+
+const toggleActivity = (id) => {
+  if (expandedActivityId.value === id) {
+    expandedActivityId.value = null;
+  } else {
+    expandedActivityId.value = id;
+  }
+};
+
+const getTransactionIcon = (type) => {
+  switch (type) {
+    case "charge":
+      return "bolt";
+    case "recycling":
+      return "recycling";
+    case "achievement":
+      return "military_tech";
+    default:
+      return "history";
+  }
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatTime = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 onUnmounted(() => {
   // Global polling is handled in App.vue
@@ -239,7 +358,7 @@ const handleAction = (type) => {
   const routes = {
     scan: "/scan",
     map: "/map",
-    history: "/achievements", // Pointing history to achievements for now or create new view
+    history: "/history",
     offline: "#",
   };
 
@@ -495,7 +614,183 @@ const handleAction = (type) => {
   text-align: center;
 }
 
-/* Empty State */
+/* Activity List Unified */
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-card-glass {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 14px;
+  border: 0.5px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.activity-card-glass:active {
+  transform: scale(0.97);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.card-main-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.activity-icon-container {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.activity-icon-container.charge {
+  background: rgba(43, 127, 255, 0.1);
+  color: #2b7fff;
+}
+
+.activity-icon-container.recycling {
+  background: rgba(32, 153, 88, 0.1);
+  color: #209958;
+}
+
+.activity-icon-container.achievement {
+  background: rgba(255, 215, 0, 0.1);
+  color: #fbc02d;
+}
+
+.activity-info {
+  flex: 1;
+}
+
+.activity-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.activity-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.points-value {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.points-value.credit {
+  color: #209958;
+}
+
+.points-value.debit {
+  color: #e53935;
+}
+
+.activity-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.activity-date {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+}
+
+.balance-pill {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pill-label {
+  font-size: 9px;
+  color: #888;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.pill-value {
+  font-size: 10px;
+  font-weight: 700;
+  color: #444;
+}
+
+/* Expanded State */
+.card-details {
+  margin-top: 12px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.divider {
+  height: 0.5px;
+  background: rgba(0, 0, 0, 0.06);
+  margin-bottom: 12px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-label {
+  font-size: 11px;
+  color: #999;
+}
+
+.detail-value {
+  font-size: 11px;
+  font-family: monospace;
+  color: #666;
+}
+
+.detail-desc {
+  font-size: 12px;
+  color: #555;
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+.mt-2 {
+  margin-top: 8px;
+}
+
+/* Empty State Styles */
 .activity-card-empty {
   background: var(--bg-secondary);
   border-radius: 20px;
