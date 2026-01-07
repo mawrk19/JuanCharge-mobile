@@ -8,8 +8,10 @@ import {
   startSessionPolling,
   stopSessionPolling,
 } from "@/services/sessionState";
+import { useTheme } from "@/composables/useTheme";
 
 const route = useRoute();
+useTheme(); // Initialize theme globally
 
 // Hide navbar on login page
 const showBottomNav = computed(() => {

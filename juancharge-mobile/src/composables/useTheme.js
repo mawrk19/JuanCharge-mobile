@@ -2,9 +2,10 @@ import { ref, watchEffect } from "vue";
 
 const THEME_KEY = "juancharge-theme";
 
+const isDark = ref(localStorage.getItem(THEME_KEY) === "dark");
+
 export function useTheme() {
   // Initialize from localStorage or system preference
-  const isDark = ref(localStorage.getItem(THEME_KEY) === "dark");
 
   // Apply theme to document
   const applyTheme = () => {
