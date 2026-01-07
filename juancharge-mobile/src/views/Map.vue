@@ -196,7 +196,36 @@ const initMap = () => {
 };
 
 const focusUserLocation = () => {
-  if (map) map.setView(mapCenter, 16);
+  if (!map) return;
+
+  loading.value = true;
+  if ("geolocation" in navigator) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const userLoc = [lat, lng];
+
+        map.setView(userLoc, 16);
+
+        // Update user marker if exists, or create new
+        // Ideally we keep a reference specific to user marker
+        L.popup().setLatLng(userLoc).setContent("You are here").openOn(map);
+
+        loading.value = false;
+      },
+      (err) => {
+        console.error("Location error:", err);
+        loading.value = false;
+        alert(
+          "Could not get your location. Please enable location permissions."
+        );
+      }
+    );
+  } else {
+    loading.value = false;
+    alert("Geolocation is not supported by your browser");
+  }
 };
 
 const getBorderClass = (kiosk) => {

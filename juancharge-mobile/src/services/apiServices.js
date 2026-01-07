@@ -2,30 +2,24 @@ import api from "./api";
 
 // Auth API calls - Mobile endpoints with persistent login
 export const authService = {
-  // Mobile-specific auth endpoints (use these if backend has mobile auth implemented)
+  // Mobile-specific auth endpoints
   login(credentials) {
-    // Try mobile endpoint first, fallback handled by backend
-    return api.post("/mobile/auth/login", credentials);
-  },
-
-  // Fallback: Regular auth endpoint (if mobile endpoints not deployed yet)
-  loginLegacy(credentials) {
     return api.post("/auth/login", credentials);
   },
 
   autoLogin(deviceToken) {
-    return api.post("/mobile/auth/auto-login", { device_token: deviceToken });
+    return api.post("/auth/auto-login", { device_token: deviceToken });
   },
   logout() {
-    return api.post("/mobile/auth/logout");
+    return api.post("/auth/logout");
   },
   refreshToken(deviceToken) {
-    return api.post("/mobile/auth/refresh-token", {
+    return api.post("/auth/refresh-token", {
       device_token: deviceToken,
     });
   },
 
-  // Legacy endpoints (keep for backwards compatibility)
+  // Profile & Registration
   register(userData) {
     return api.post("/auth/register", userData);
   },
@@ -47,11 +41,11 @@ export const authService = {
 
   // -- REAL OTP FLOW --
   startOtp(identifier) {
-    return api.post("/mobile/auth/otp/start", { identifier });
+    return api.post("/auth/otp/start", { identifier });
   },
 
   verifyOtp(identifier, code) {
-    return api.post("/mobile/auth/otp/verify", { identifier, code });
+    return api.post("/auth/otp/verify", { identifier, code });
   },
 };
 

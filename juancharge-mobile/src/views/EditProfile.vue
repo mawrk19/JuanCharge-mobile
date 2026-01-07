@@ -92,8 +92,14 @@ const form = ref({
 
 const fetchProfile = async () => {
   try {
+    console.log("[DEBUG] EditProfile - Fetching profile...");
     const response = await authService.me();
-    const user = response.data.user || response.data.data || {};
+    console.log("[DEBUG] EditProfile - Profile response:", response.data);
+
+    const user =
+      response.data.user || response.data.data || response.data || {};
+    console.log("[DEBUG] EditProfile - Extracted user data:", user);
+
     form.value = {
       first_name: user.first_name || "",
       last_name: user.last_name || "",
@@ -101,7 +107,14 @@ const fetchProfile = async () => {
       phone: user.phone || user.phone_number || user.contact || "",
     };
   } catch (err) {
-    console.error("Profile load error", err);
+    console.error("[DEBUG] EditProfile - Profile load error:", err.message);
+    if (err.response) {
+      console.error(
+        "[DEBUG] EditProfile - Status / Data:",
+        err.response.status,
+        err.response.data
+      );
+    }
   }
 };
 

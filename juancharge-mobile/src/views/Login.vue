@@ -113,6 +113,55 @@ import { reactive, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { authService } from "@/services/apiServices";
 import { secureStorage } from "@/services/secureStorage";
+import axios from "axios";
+import { onMounted } from "vue";
+
+onMounted(() => {
+  // 1️⃣ Print the API URL the app is actually using
+  console.log("[DEBUG] API URL:", import.meta.env.VITE_API_URL);
+
+  // 2️⃣ Test connectivity with a simple GET request
+  axios
+    .get(`${import.meta.env.VITE_API_URL}`)
+    .then((res) => {
+      console.log("[DEBUG] API reachable:", res.data);
+    })
+    .catch((err) => {
+      console.error("[DEBUG] API network error:", err.message);
+      if (err.response) {
+        console.error("[DEBUG] Response status:", err.response.status);
+        console.error("[DEBUG] Response data:", err.response.data);
+      }
+      if (err.request) {
+        console.error("[DEBUG] Request was made but no response received");
+        console.error("[DEBUG] Request details:", err.request);
+      }
+    });
+
+  // 3️⃣ Test login endpoint directly (check if it exists/responds)
+  // We use a dummy payload just to see if we get a response (even if 422 or 401)
+  const testUrl = `${import.meta.env.VITE_API_URL}/auth/otp/start`;
+  console.log("[DEBUG] Testing endpoint:", testUrl);
+  axios
+    .post(testUrl, {
+      identifier: "test@example.com",
+    })
+    .then((res) => {
+      console.log("[DEBUG] Test login endpoint reachable:", res.data);
+    })
+    .catch((err) => {
+      console.error(
+        "[DEBUG] Test login endpoint error at " + testUrl + ":",
+        err.message
+      );
+      if (err.response)
+        console.error(
+          "[DEBUG] Status / Data:",
+          err.response.status,
+          err.response.data
+        );
+    });
+});
 
 const router = useRouter();
 
@@ -194,29 +243,41 @@ const verifyCode = async () => {
   error.value = null;
 
   try {
+    console.log(
+      "[DEBUG] Verifying OTP for:",
+      form.identifier,
+      "with code:",
+      form.code
+    );
     const response = await authService.verifyOtp(form.identifier, form.code);
+    console.log("[DEBUG] Verification response:", response.data);
 
     if (response.data.success) {
       // Store tokens
-      await secureStorage.setDeviceToken("mock-device-token"); // In real flow, get from resp
+      // If backend doesn't provide device_token yet, we use a consistent one based on identifier
+      const deviceToken =
+        response.data.device_token ||
+        `device-${btoa(form.identifier).slice(0, 16)}`;
+      console.log("[DEBUG] Setting device token for persistence:", deviceToken);
+
+      await secureStorage.setDeviceToken(deviceToken);
       await secureStorage.setApiToken(response.data.api_token);
       await secureStorage.setUserData(response.data.user);
       await secureStorage.setTokenExpiresAt(response.data.token_expires_at);
 
       // Navigate
-      if (response.data.should_update_profile) {
-        // Redirection logic: even if profile update needed, user prefers home for now
-        // But normally if profile incomplete, settings is better.
-        // User explicitly asked for home redirect on logging in.
-        // I will respect the user request to redirect to Home.
-        router.push("/home");
-      } else {
-        router.push("/home");
-      }
+      router.push("/home");
     }
   } catch (err) {
+    console.error("[DEBUG] Verification error:", err.message);
+    if (err.response) {
+      console.error("[DEBUG] Verification error status:", err.response.status);
+      console.error("[DEBUG] Verification error data:", err.response.data);
+    }
     error.value =
-      err.response?.data?.message || "Invalid code. Please try again.";
+      err.response?.data?.message ||
+      err.message ||
+      "Invalid code. Please try again.";
   } finally {
     loading.value = false;
   }

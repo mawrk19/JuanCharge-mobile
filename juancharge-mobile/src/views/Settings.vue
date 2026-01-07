@@ -259,8 +259,21 @@ const logout = async () => {
 };
 
 const openLink = (page) => {
-  console.log("Navigate to", page);
-  // Placeholder for navigation
+  if (page === "permissions") {
+    Swal.fire({
+      title: "Permissions",
+      text: "Please accept permissions (Location/Camera) when prompted by the app features.",
+      icon: "info",
+      confirmButtonColor: "#42b883",
+    });
+  } else if (page === "privacy") {
+    Swal.fire({
+      title: "Privacy & Security",
+      text: "This feature is coming soon.",
+      icon: "info",
+      confirmButtonColor: "#42b883",
+    });
+  }
 };
 
 onMounted(() => {

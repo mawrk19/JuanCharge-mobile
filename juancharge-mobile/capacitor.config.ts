@@ -19,6 +19,9 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 0,
     },
+    CapacitorHttp: {
+      enabled: true,
+    },
   },
 };
 

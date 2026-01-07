@@ -1,4 +1,4 @@
-import { Preferences } from '@capacitor/preferences'
+import { Preferences } from "@capacitor/preferences";
 
 /**
  * Secure Storage Service using Capacitor Preferences
@@ -6,10 +6,10 @@ import { Preferences } from '@capacitor/preferences'
  */
 export const secureStorage = {
   // Token storage keys
-  DEVICE_TOKEN: 'device_token',
-  API_TOKEN: 'api_token',
-  USER_DATA: 'user_data',
-  TOKEN_EXPIRES_AT: 'token_expires_at',
+  DEVICE_TOKEN: "device_token",
+  API_TOKEN: "api_token",
+  USER_DATA: "user_data",
+  TOKEN_EXPIRES_AT: "token_expires_at",
 
   /**
    * Store device token (for persistent login)
@@ -17,34 +17,36 @@ export const secureStorage = {
   async setDeviceToken(token) {
     await Preferences.set({
       key: this.DEVICE_TOKEN,
-      value: token
-    })
+      value: token,
+    });
   },
 
   /**
    * Get device token
    */
   async getDeviceToken() {
-    const { value } = await Preferences.get({ key: this.DEVICE_TOKEN })
-    return value
+    const { value } = await Preferences.get({ key: this.DEVICE_TOKEN });
+    return value;
   },
 
   /**
    * Store API token (for API requests)
    */
   async setApiToken(token) {
+    console.log("[DEBUG] Storage - Setting API token:", token);
     await Preferences.set({
       key: this.API_TOKEN,
-      value: token
-    })
+      value: token,
+    });
   },
 
   /**
    * Get API token
    */
   async getApiToken() {
-    const { value } = await Preferences.get({ key: this.API_TOKEN })
-    return value
+    const { value } = await Preferences.get({ key: this.API_TOKEN });
+    console.log("[DEBUG] Storage - Getting API token:", value);
+    return value;
   },
 
   /**
@@ -53,16 +55,16 @@ export const secureStorage = {
   async setUserData(userData) {
     await Preferences.set({
       key: this.USER_DATA,
-      value: JSON.stringify(userData)
-    })
+      value: JSON.stringify(userData),
+    });
   },
 
   /**
    * Get user data
    */
   async getUserData() {
-    const { value } = await Preferences.get({ key: this.USER_DATA })
-    return value ? JSON.parse(value) : null
+    const { value } = await Preferences.get({ key: this.USER_DATA });
+    return value ? JSON.parse(value) : null;
   },
 
   /**
@@ -71,106 +73,123 @@ export const secureStorage = {
   async setTokenExpiresAt(expiresAt) {
     await Preferences.set({
       key: this.TOKEN_EXPIRES_AT,
-      value: expiresAt
-    })
+      value: expiresAt,
+    });
   },
 
   /**
    * Get token expiration date
    */
   async getTokenExpiresAt() {
-    const { value } = await Preferences.get({ key: this.TOKEN_EXPIRES_AT })
-    return value
+    const { value } = await Preferences.get({ key: this.TOKEN_EXPIRES_AT });
+    return value;
   },
 
   /**
    * Clear all auth data (logout)
    */
   async clearAll() {
-    await Preferences.remove({ key: this.DEVICE_TOKEN })
-    await Preferences.remove({ key: this.API_TOKEN })
-    await Preferences.remove({ key: this.USER_DATA })
-    await Preferences.remove({ key: this.TOKEN_EXPIRES_AT })
+    await Preferences.remove({ key: this.DEVICE_TOKEN });
+    await Preferences.remove({ key: this.API_TOKEN });
+    await Preferences.remove({ key: this.USER_DATA });
+    await Preferences.remove({ key: this.TOKEN_EXPIRES_AT });
   },
 
   /**
    * Check if user has valid stored credentials
    */
   async hasValidCredentials() {
-    const deviceToken = await this.getDeviceToken()
-    if (!deviceToken) return false
+    const apiToken = await this.getApiToken();
+    if (!apiToken) {
+      console.log("[DEBUG] hasValidCredentials - No API token");
+      return false;
+    }
 
-    const expiresAt = await this.getTokenExpiresAt()
-    if (!expiresAt) return true // If no expiration stored, assume valid
+    const expiresAt = await this.getTokenExpiresAt();
+    if (!expiresAt) {
+      console.log(
+        "[DEBUG] hasValidCredentials - No expiry date, assuming valid"
+      );
+      return true;
+    }
 
-    const expirationDate = new Date(expiresAt)
-    const now = new Date()
-    return expirationDate > now
-  }
-}
+    const expirationDate = new Date(expiresAt);
+    const now = new Date();
+    const isValid = expirationDate > now;
+    console.log(
+      "[DEBUG] hasValidCredentials - Valid:",
+      isValid,
+      "Expiry:",
+      expiresAt
+    );
+    return isValid;
+  },
+};
 
 // Fallback for web browser (development)
-if (typeof window !== 'undefined' && !window.Capacitor) {
-  console.warn('Capacitor not detected - using localStorage fallback (NOT SECURE for production)')
-  
+if (typeof window !== "undefined" && !window.Capacitor) {
+  console.warn(
+    "Capacitor not detected - using localStorage fallback (NOT SECURE for production)"
+  );
+
   const localStorageFallback = {
-    DEVICE_TOKEN: 'device_token',
-    API_TOKEN: 'api_token',
-    USER_DATA: 'user_data',
-    TOKEN_EXPIRES_AT: 'token_expires_at',
+    DEVICE_TOKEN: "device_token",
+    API_TOKEN: "api_token",
+    USER_DATA: "user_data",
+    TOKEN_EXPIRES_AT: "token_expires_at",
 
     async setDeviceToken(token) {
-      localStorage.setItem(this.DEVICE_TOKEN, token)
+      localStorage.setItem(this.DEVICE_TOKEN, token);
     },
 
     async getDeviceToken() {
-      return localStorage.getItem(this.DEVICE_TOKEN)
+      return localStorage.getItem(this.DEVICE_TOKEN);
     },
 
     async setApiToken(token) {
-      localStorage.setItem(this.API_TOKEN, token)
+      localStorage.setItem(this.API_TOKEN, token);
     },
 
     async getApiToken() {
-      return localStorage.getItem(this.API_TOKEN)
+      return localStorage.getItem(this.API_TOKEN);
     },
 
     async setUserData(userData) {
-      localStorage.setItem(this.USER_DATA, JSON.stringify(userData))
+      localStorage.setItem(this.USER_DATA, JSON.stringify(userData));
     },
 
     async getUserData() {
-      const data = localStorage.getItem(this.USER_DATA)
-      return data ? JSON.parse(data) : null
+      const data = localStorage.getItem(this.USER_DATA);
+      return data ? JSON.parse(data) : null;
     },
 
     async setTokenExpiresAt(expiresAt) {
-      localStorage.setItem(this.TOKEN_EXPIRES_AT, expiresAt)
+      localStorage.setItem(this.TOKEN_EXPIRES_AT, expiresAt);
     },
 
     async getTokenExpiresAt() {
-      return localStorage.getItem(this.TOKEN_EXPIRES_AT)
+      return localStorage.getItem(this.TOKEN_EXPIRES_AT);
     },
 
     async clearAll() {
-      localStorage.removeItem(this.DEVICE_TOKEN)
-      localStorage.removeItem(this.API_TOKEN)
-      localStorage.removeItem(this.USER_DATA)
-      localStorage.removeItem(this.TOKEN_EXPIRES_AT)
+      localStorage.removeItem(this.DEVICE_TOKEN);
+      localStorage.removeItem(this.API_TOKEN);
+      localStorage.removeItem(this.USER_DATA);
+      localStorage.removeItem(this.TOKEN_EXPIRES_AT);
     },
 
     async hasValidCredentials() {
-      const deviceToken = localStorage.getItem(this.DEVICE_TOKEN)
-      if (!deviceToken) return false
+      const deviceToken = localStorage.getItem(this.DEVICE_TOKEN);
+      if (!deviceToken) return false;
 
-      const expiresAt = localStorage.getItem(this.TOKEN_EXPIRES_AT)
-      if (!expiresAt) return true
+      const expiresAt = localStorage.getItem(this.TOKEN_EXPIRES_AT);
+      if (!expiresAt) return true;
 
-      const expirationDate = new Date(expiresAt)
-      const now = new Date()
-      return expirationDate > now
-    }
-  }
+      const expirationDate = new Date(expiresAt);
+      const now = new Date();
+      return expirationDate > now;
+    },
+  };
 
-  Object.assign(secureStorage, localStorageFallback)
+  Object.assign(secureStorage, localStorageFallback);
 }

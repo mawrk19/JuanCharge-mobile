@@ -52,9 +52,9 @@
             <button class="manual-submit-btn" @click="handleManualEntry">
               Continue
             </button>
-            <button class="simulate-btn" @click="simulateSpecificScan">
+            <!-- <button class="simulate-btn" @click="simulateSpecificScan">
               Simulate Scan
-            </button>
+            </button> -->
             <button class="manual-cancel-btn" @click="showManualInput = false">
               Cancel
             </button>
@@ -100,10 +100,10 @@
       <div class="visual-overlay">
         <div class="scan-frame" :class="{ 'qr-detected': qrDetected }">
           <div class="corners">
-            <div class="corner-item top-left"></div>
+            <!-- <div class="corner-item top-left"></div>
             <div class="corner-item top-right"></div>
             <div class="corner-item bottom-left"></div>
-            <div class="corner-item bottom-right"></div>
+            <div class="corner-item bottom-right"></div> -->
           </div>
           <div class="scan-line"></div>
 
@@ -847,6 +847,9 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
+  background: transparent !important;
+  box-shadow: none !important;
+  top: 62px;
 }
 
 .scan-frame.qr-detected {
@@ -952,7 +955,7 @@ onBeforeUnmount(() => {
 }
 
 .scanning-info {
-  margin-top: 40px;
+  margin-top: 80px;
   text-align: center;
 }
 .guide-text {

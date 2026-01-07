@@ -24,57 +24,73 @@ onMounted(async () => {
 
 async function checkAutoLogin() {
   try {
-    // Check if device token exists
+    // 1. Check if we already have a valid API token (already logged in)
+    const apiToken = await secureStorage.getApiToken();
+    const hasValidApiToken = await secureStorage.hasValidCredentials();
+    console.log(
+      "[DEBUG] Startup - Stored API token:",
+      apiToken,
+      "Valid:",
+      hasValidApiToken
+    );
+
+    if (apiToken && hasValidApiToken) {
+      console.log(
+        "[DEBUG] Already logged in with valid token, skipping auto-login"
+      );
+      statusMessage.value = "Welcome back!";
+      setTimeout(() => router.push("/home"), 500);
+      return;
+    }
+
+    // 2. If no valid API token, check if we have a device token for auto-login
     const deviceToken = await secureStorage.getDeviceToken();
+    console.log("[DEBUG] Startup - Stored device token:", deviceToken);
 
     if (!deviceToken) {
-      // No token stored, go to login
-      statusMessage.value = "No saved credentials";
+      console.log("[DEBUG] No device token found, redirecting to get-started");
+      statusMessage.value = "Welcome!";
       setTimeout(() => router.push("/get-started"), 500);
       return;
     }
 
-    // Check if token is expired
-    const hasValidCredentials = await secureStorage.hasValidCredentials();
-    if (!hasValidCredentials) {
-      // Token expired, clear and go to login
-      statusMessage.value = "Session expired";
-      await secureStorage.clearAll();
-      setTimeout(() => router.push("/get-started"), 500);
-      return;
-    }
+    // 3. Try auto-login with device token
+    statusMessage.value = "Authenticating...";
+    console.log("[DEBUG] Attempting auto-login with device token...");
 
-    // Try auto-login
-    statusMessage.value = "Logging in...";
-    const response = await authService.autoLogin(deviceToken);
+    try {
+      const response = await authService.autoLogin(deviceToken);
+      console.log("[DEBUG] Auto-login response:", response.data);
 
-    if (response.data.success) {
-      // Update API token (refreshed by backend)
-      await secureStorage.setApiToken(response.data.api_token);
-      await secureStorage.setUserData(response.data.user);
-      await secureStorage.setTokenExpiresAt(response.data.token_expires_at);
+      if (response.data.success) {
+        await secureStorage.setApiToken(response.data.api_token);
+        await secureStorage.setUserData(response.data.user);
+        await secureStorage.setTokenExpiresAt(response.data.token_expires_at);
 
-      console.log("✅ Auto-login successful");
-      statusMessage.value = "Welcome back!";
-
-      // Check if profile update needed
-      if (response.data.should_update_profile) {
-        setTimeout(() => router.push("/settings"), 500);
-      } else {
+        console.log("✅ Auto-login successful");
+        statusMessage.value = "Welcome back!";
         setTimeout(() => router.push("/home"), 500);
+      } else {
+        console.warn("[DEBUG] Auto-login failed (not success):", response.data);
+        statusMessage.value = "Session expired";
+        await secureStorage.clearAll();
+        setTimeout(() => router.push("/get-started"), 500);
       }
-    } else if (response.data.requires_login) {
-      // Token invalid, clear and go to login
-      statusMessage.value = "Please login again";
-      await secureStorage.clearAll();
-      setTimeout(() => router.push("/get-started"), 500);
+    } catch (apiError) {
+      console.error("[DEBUG] Auto-login API error:", apiError.message);
+      // If we are offline but have a token, maybe try to let them in anyway?
+      if (apiToken) {
+        statusMessage.value = "Offline mode";
+        setTimeout(() => router.push("/home"), 1000);
+      } else {
+        statusMessage.value = "Connection error";
+        setTimeout(() => router.push("/get-started"), 1000);
+      }
     }
   } catch (error) {
-    console.error("Auto-login error:", error);
-    // On network error or other issues, clear storage and go to login
-    statusMessage.value = "Connection error";
-    await secureStorage.clearAll();
-    setTimeout(() => router.push("/get-started"), 1500);
+    console.error("[DEBUG] Fatal startup error:", error);
+    statusMessage.value = "App Error";
+    setTimeout(() => router.push("/get-started"), 2000);
   }
 }
 </script>
