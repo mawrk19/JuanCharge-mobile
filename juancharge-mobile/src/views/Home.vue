@@ -45,21 +45,9 @@
           <span class="material-icons">chevron_right</span>
         </div>
       </div>
-
       <!-- Metrics Row -->
       <div class="metrics-row">
-        <div class="metric-card">
-          <div class="metric-icon green-icon">
-            <span class="material-icons">recycling</span>
-          </div>
-          <div class="metric-text">
-            <span class="metric-label">Recycled</span>
-            <span class="metric-count"
-              >{{ stats.total_recyclables_weight_kg || 0 }} kg</span
-            >
-            <!-- Using kg as per data, design says 'times', will adapt label if needed -->
-          </div>
-        </div>
+        <!-- Charged Metric -->
         <div class="metric-card">
           <div class="metric-icon blue-icon">
             <span class="material-icons">battery_charging_full</span>
@@ -77,14 +65,6 @@
       <div class="section-container">
         <h3 class="section-title">Quick Actions</h3>
         <div class="actions-grid">
-          <!-- Store Points -->
-          <button class="action-btn" @click="handleAction('scan')">
-            <div class="action-icon-circle green-light">
-              <span class="material-icons green-text">recycling</span>
-            </div>
-            <span class="action-name">Store Points</span>
-          </button>
-
           <!-- Scan Port QR -->
           <button class="action-btn" @click="handleAction('scan')">
             <div class="action-icon-circle blue-light">

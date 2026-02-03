@@ -70,8 +70,11 @@ export const kioskService = {
   getAll(params) {
     return api.get("/kiosks", { params });
   },
+  getByCode(code) {
+    return api.get(`/kiosks/${code}`);
+  },
   getById(id) {
-    return api.get(`/kiosks/${id}`);
+    return api.get(`/kiosks/id/${id}`);
   },
 };
 
@@ -95,10 +98,10 @@ export const chargingService = {
   getHistory(params) {
     return api.get("/charging/history", { params });
   },
-  activatePort(points, kioskId, port) {
+  activatePort(points, kioskCode, port) {
     return api.post("/charging/activate", {
       points,
-      kiosk_id: kioskId,
+      kiosk_code: kioskCode,
       port: port
     });
   },

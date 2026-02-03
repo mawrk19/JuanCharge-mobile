@@ -38,7 +38,7 @@
           <input
             type="text"
             v-model="manualKioskId"
-            placeholder="Enter Kiosk ID (e.g. kiosk-123)"
+            placeholder="Enter Kiosk Code (e.g. UCC-Kiosk-1)"
             class="manual-field"
           />
           <input
@@ -308,7 +308,7 @@ import gsap from 'gsap';
 import { qrSecurity } from "@/services/qrSecurity";
 import { secureStorage } from "@/services/secureStorage";
 import { store } from "@/services/store";
-import { chargingService } from "@/services/apiServices";
+import { chargingService, kioskService } from "@/services/apiServices";
 import Swal from 'sweetalert2';
 // sessionState not defined in the snippet given, assuming it might be needed for active sessions
 // If sessionState is not used, we can remove imports or add placeholder.
@@ -472,7 +472,25 @@ async function onDetect(detectedCodes) {
             await claimSignedPoints(rawValue, voucherPayload);
         } else if (isActivationPort) {
             // >>> REDEEM CHARGING FLOW
-            currentState.value = 'redeeming';
+            try {
+                // Verify Kiosk Existence by Code
+                const response = await kioskService.getByCode(scannedKioskCode.value);
+                if (response.data && response.data.success !== false) {
+                    currentState.value = 'redeeming';
+                } else {
+                    throw new Error("Kiosk not found");
+                }
+            } catch (err) {
+                loading.value = false;
+                await Swal.fire({
+                    icon: 'error',
+                    title: 'Station Unavailable',
+                    text: 'This charging station is currently not recognized by the system.',
+                    confirmButtonColor: '#1a1a1a',
+                    heightAuto: false
+                });
+                resetScan();
+            }
         } else {
             // >>> INVALID QR - Show Dialog
             loading.value = false;
@@ -598,17 +616,37 @@ const handleManualEntry = async () => {
         const kioskId = manualKioskId.value.trim();
         const portNum = parseInt(manualPortNumber.value) || 1;
         
-        // Directly set values for redemption
-        scannedKioskCode.value = kioskId;
-        scannedPortNumber.value = portNum;
-        scannedPort.value = `${kioskId} - Port ${portNum}`;
-        
-        currentState.value = 'redeeming';
-        
-        // Reset manual fields
-        manualKioskId.value = '';
-        manualPortNumber.value = '';
-        showManualInput.value = false;
+        loading.value = true;
+        try {
+            // Validate Kiosk Existence by Code
+            const response = await kioskService.getByCode(kioskId);
+            
+            if (response.data && response.data.success !== false) {
+                // Directly set values for redemption
+                scannedKioskCode.value = kioskId;
+                scannedPortNumber.value = portNum;
+                scannedPort.value = `${kioskId} - Port ${portNum}`;
+                
+                currentState.value = 'redeeming';
+                
+                // Reset manual fields
+                manualKioskId.value = '';
+                manualPortNumber.value = '';
+                showManualInput.value = false;
+            } else {
+                throw new Error("Kiosk not found");
+            }
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Kiosk Not Found',
+                text: 'The Kiosk ID you entered does not exist. Please check the code and try again.',
+                confirmButtonColor: '#1a1a1a',
+                heightAuto: false
+            });
+        } finally {
+            loading.value = false;
+        }
     }
 };
 
@@ -795,11 +833,13 @@ const animateSuccess = () => {
   background: #f8f9fa;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Landing Page Styles */
 .landing-state {
-  padding: 1rem;
+  padding: 1rem 1rem 120px 1rem;
 }
 
 .white-header {
@@ -1132,7 +1172,8 @@ const animateSuccess = () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
+    overflow-y: auto;
+    padding-bottom: 40px;
 }
 
 .success-message-container {
