@@ -41,6 +41,12 @@
             placeholder="Enter Kiosk ID (e.g. kiosk-123)"
             class="manual-field"
           />
+          <input
+            type="number"
+            v-model="manualPortNumber"
+            placeholder="Port Number (e.g. 1)"
+            class="manual-field"
+          />
           <div class="manual-actions">
             <button class="manual-submit-btn" @click="handleManualEntry">
               Continue
@@ -121,9 +127,54 @@
       </div>
     </div>
 
-     <!-- STATE: SUCCESS/ERROR MESSAGE -->
+    <!-- STATE 4: ACTIVE CHARGING SESSION -->
+    <div v-if="currentState === 'active_session'" class="active-session-state">
+      <div class="session-card-premium">
+         <div class="session-header">
+            <span class="pulse-icon"></span>
+            <h3>Charging in Progress</h3>
+         </div>
+         
+         <div class="port-info-row">
+            <span class="material-icons">ev_station</span>
+            {{ scannedPort }}
+         </div>
+
+         <div class="timer-display-main">
+            <div class="timer-circle">
+               <svg class="timer-svg" viewBox="0 0 100 100">
+                  <circle class="timer-bg" cx="50" cy="50" r="45"></circle>
+                  <circle class="timer-progress" cx="50" cy="50" r="45" :style="timerProgressStyle"></circle>
+               </svg>
+               <div class="timer-digits">
+                  <span class="time">{{ formatTime(sessionSeconds) }}</span>
+                  <span class="label">Time Remaining</span>
+               </div>
+            </div>
+         </div>
+
+         <div class="session-footer">
+            <div class="session-stat">
+               <span class="val">~{{ (pointsEarned * 0.1).toFixed(1) }}</span>
+               <span class="unit">Wh Energy</span>
+            </div>
+            <div class="session-divider"></div>
+            <div class="session-stat">
+               <span class="val">5V / 2A</span>
+               <span class="unit">Power Output</span>
+            </div>
+         </div>
+
+         <button class="stop-session-btn" @click="stopChargingSession">
+            <span class="material-icons">stop_circle</span>
+            End Session early
+         </button>
+      </div>
+    </div>
+
+    <!-- STATE: SUCCESS/ERROR MESSAGE -->
     <div v-if="currentState === 'result'" class="result-state">
-        <div v-if="successMessage" class="success-message-container">
+        <div v-if="successTitle || successMessage" class="success-message-container">
             <div class="leaves-container" ref="leavesContainer"></div>
             
             <div class="success-content" ref="successContent">
@@ -258,6 +309,7 @@ import { qrSecurity } from "@/services/qrSecurity";
 import { secureStorage } from "@/services/secureStorage";
 import { store } from "@/services/store";
 import { chargingService } from "@/services/apiServices";
+import Swal from 'sweetalert2';
 // sessionState not defined in the snippet given, assuming it might be needed for active sessions
 // If sessionState is not used, we can remove imports or add placeholder.
 // For now, I will keep local state to make the component functional standalone.
@@ -272,6 +324,7 @@ const scannedPort = ref("");
 const scannedKioskCode = ref("");
 const scannedPortNumber = ref(null);
 const manualKioskId = ref("");
+const manualPortNumber = ref("");
 const showManualInput = ref(false);
 
 const loading = ref(false);
@@ -288,6 +341,18 @@ const successSubMessage = ref("");
 const successIcon = ref("");
 const leavesContainer = ref(null);
 const successContent = ref(null);
+const sessionSeconds = ref(0);
+const totalSessionSeconds = ref(0);
+const sessionInterval = ref(null);
+
+const timerProgressStyle = computed(() => {
+    if (totalSessionSeconds.value === 0) return { strokeDashoffset: 0 };
+    const percentage = (sessionSeconds.value / totalSessionSeconds.value) * 283;
+    return {
+        strokeDasharray: '283',
+        strokeDashoffset: (283 - percentage).toString()
+    };
+});
 
 
 // Computed
@@ -326,7 +391,6 @@ async function onDetect(detectedCodes) {
     // Pause scanning immediately
     paused.value = true;
     loading.value = true;
-    loading.value = true;
     errorMessage.value = '';
     // successMessage.value = ''; // Don't clear immediately if we want smooth transition, but fine here
 
@@ -336,6 +400,7 @@ async function onDetect(detectedCodes) {
         // DECISION LOGIC: Is this a PORT QR (active charging) or a VOUCHER QR (offline points)?
         
         let isSignedVoucher = false;
+        let isActivationPort = false;
         let voucherPayload = {};
 
         // 1. Try to verify as a Signed Token (JWT)
@@ -393,13 +458,11 @@ async function onDetect(detectedCodes) {
                      voucherPayload = parsed;
                 }
                 // Case C: Activate Port (Redemption Flow)
-                else if (parsed.action === 'activate_port') {
+                else if (parsed.action === 'activate_port' && parsed.kiosk_code) {
+                    isActivationPort = true;
                     scannedKioskCode.value = parsed.kiosk_code;
-                    scannedPortNumber.value = parsed.port;
-                    scannedPort.value = `${parsed.kiosk_code} - Port ${parsed.port}`;
-                    currentState.value = 'redeeming';
-                    loading.value = false;
-                    return; // Exit onDetect early since we transitioned state
+                    scannedPortNumber.value = parsed.port || 1;
+                    scannedPort.value = `${parsed.kiosk_code} - Port ${scannedPortNumber.value}`;
                 }
             } catch (e) { /* Not JSON */ }
         }
@@ -407,11 +470,21 @@ async function onDetect(detectedCodes) {
         if (isSignedVoucher) {
             // >>> CLAIM SIGNED POINT VOUCHER FLOW
             await claimSignedPoints(rawValue, voucherPayload);
-        } else {
+        } else if (isActivationPort) {
             // >>> REDEEM CHARGING FLOW
-            // Assume rawValue is the port ID e.g., "KIOSK-001-PORT-1"
-            scannedPort.value = rawValue;
             currentState.value = 'redeeming';
+        } else {
+            // >>> INVALID QR - Show Dialog
+            loading.value = false;
+            await Swal.fire({
+                icon: 'error',
+                title: 'Invalid QR Code',
+                text: 'This QR code is not recognized. Please scan a valid JuanCharge port or voucher.',
+                confirmButtonColor: '#1a1a1a',
+                heightAuto: false, // Recommended for mobile integration
+                backdrop: `rgba(0,0,0,0.4)`
+            });
+            resetScan();
         }
 
     } catch (err) {
@@ -522,10 +595,19 @@ function resetScan() {
 
 const handleManualEntry = async () => {
     if (manualKioskId.value.trim()) {
-        const input = manualKioskId.value.trim();
-        // Simulate scan
-        await onDetect([{ rawValue: input }]);
+        const kioskId = manualKioskId.value.trim();
+        const portNum = parseInt(manualPortNumber.value) || 1;
+        
+        // Directly set values for redemption
+        scannedKioskCode.value = kioskId;
+        scannedPortNumber.value = portNum;
+        scannedPort.value = `${kioskId} - Port ${portNum}`;
+        
+        currentState.value = 'redeeming';
+        
+        // Reset manual fields
         manualKioskId.value = '';
+        manualPortNumber.value = '';
         showManualInput.value = false;
     }
 };
@@ -539,7 +621,7 @@ const appendNumber = (num) => {
       pointsToRedeem.value = num.toString();
   } else {
       const newVal = currentValStr + num.toString();
-       if (parseInt(newVal) <= pointsBalance.value) {
+       if (parseInt(newVal) <= store.userPoints) {
         pointsToRedeem.value = newVal;
       }
   }
@@ -564,6 +646,43 @@ const handleKeypad = (num) => {
     if (num === 'C') clearPoints();
     else if (num === '⌫') backspace();
     else appendNumber(num);
+};
+
+const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+const startSessionTimer = (minutes) => {
+    sessionSeconds.value = minutes * 60;
+    totalSessionSeconds.value = sessionSeconds.value;
+    
+    if (sessionInterval.value) clearInterval(sessionInterval.value);
+    
+    sessionInterval.value = setInterval(() => {
+        if (sessionSeconds.value > 0) {
+            sessionSeconds.value--;
+        } else {
+            stopChargingSession();
+        }
+    }, 1000);
+};
+
+const stopChargingSession = () => {
+    if (sessionInterval.value) clearInterval(sessionInterval.value);
+    sessionInterval.value = null;
+    
+    // Final Summary
+    successType.value = 'charging';
+    successTitle.value = "Session Ended";
+    successSubMessage.value = `You successfully charged your device for ${Math.floor((totalSessionSeconds.value - sessionSeconds.value) / 60)} minutes.`;
+    successIcon.value = "check_circle";
+    currentState.value = 'result';
+    
+    setTimeout(() => {
+        animateSuccess();
+    }, 100);
 };
 
 const handleRedeem = async () => {
@@ -592,12 +711,10 @@ const handleRedeem = async () => {
                 successIcon.value = "bolt";
                 pointsEarned.value = pts; 
                 
-                currentState.value = 'result';
+                // Start Session Timer
+                startSessionTimer(pts);
+                currentState.value = 'active_session';
                 
-                // Trigger Animation
-                setTimeout(() => {
-                    animateSuccess();
-                }, 100);
             } else {
                 throw new Error(response.data.message || "Failed to activate charging");
             }
@@ -1507,5 +1624,171 @@ const animateSuccess = () => {
 
 .charging-badge .label {
     color: #FBC02D !important;
+}
+
+/* Active Session Styles */
+.active-session-state {
+    min-height: 100vh;
+    background: #fdfdfd;
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.session-card-premium {
+    background: white;
+    border-radius: 32px;
+    padding: 2.5rem 1.5rem;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.06);
+    border: 1px solid #f0f0f0;
+    text-align: center;
+}
+
+.session-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 0.5rem;
+}
+
+.session-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #4CAF50;
+    font-weight: 700;
+}
+
+.pulse-icon {
+    width: 10px;
+    height: 10px;
+    background: #4CAF50;
+    border-radius: 50%;
+    box-shadow: 0 0 0 rgba(76, 175, 80, 0.4);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+.port-info-row {
+    color: #666;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.timer-display-main {
+    margin-bottom: 3rem;
+    display: flex;
+    justify-content: center;
+}
+
+.timer-circle {
+    position: relative;
+    width: 220px;
+    height: 220px;
+}
+
+.timer-svg {
+    transform: rotate(-90deg);
+}
+
+.timer-bg {
+    fill: none;
+    stroke: #f5f5f5;
+    stroke-width: 6;
+}
+
+.timer-progress {
+    fill: none;
+    stroke: #4CAF50;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.3s;
+}
+
+.timer-digits {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+}
+
+.timer-digits .time {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #1a1a1a;
+    line-height: 1;
+}
+
+.timer-digits .label {
+    font-size: 0.8rem;
+    color: #999;
+    margin-top: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.session-footer {
+    display: flex;
+    justify-content: space-around;
+    padding: 1.5rem;
+    background: #fcfcfc;
+    border-radius: 20px;
+    margin-bottom: 2rem;
+}
+
+.session-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.session-stat .val {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.session-stat .unit {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.session-divider {
+    width: 1px;
+    height: 30px;
+    background: #eee;
+    align-self: center;
+}
+
+.stop-session-btn {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 16px;
+    background: #fdf2f2;
+    color: #d32f2f;
+    border: 1px solid #fee2e2;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.stop-session-btn:active {
+    background: #fee2e2;
+    transform: scale(0.98);
 }
 </style>
