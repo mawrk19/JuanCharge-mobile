@@ -17,7 +17,7 @@
       <div class="points-card">
         <div class="points-info">
           <span class="points-label">Available Points</span>
-          <h2 class="points-value">{{ stats.total_points || 0 }}</h2>
+          <h2 class="points-value">{{ store.userPoints || stats.total_points || 0 }}</h2>
         </div>
         <div class="points-icon-wrapper">
           <span class="material-icons flash-icon">bolt</span>
@@ -235,6 +235,7 @@ import {
 } from "@/services/apiServices";
 
 import { sessionState } from "@/services/sessionState";
+import { store } from "@/services/store";
 
 const router = useRouter();
 const user = ref(null);
@@ -273,6 +274,10 @@ onMounted(async () => {
     const response = await dashboardService.getStats();
     if (response.data && response.data.data) {
       stats.value = response.data.data;
+      // Initialize store
+      if (stats.value.total_points !== undefined) {
+         store.setPoints(stats.value.total_points);
+      }
     } else {
       // Mock
       stats.value = {
@@ -281,6 +286,10 @@ onMounted(async () => {
         total_recyclables_weight_kg: 34,
         co2_saved_kg: 1,
       };
+      // Init store with mock val if 0 (or keep existing if we moved back from scan and have higher val)
+      if (store.userPoints === 0 || store.userPoints === 43) {
+          store.setPoints(stats.value.total_points);
+      }
     }
   } catch (e) {
     console.warn("Using mock stats data");
