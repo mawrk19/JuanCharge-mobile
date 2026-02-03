@@ -95,6 +95,13 @@ export const chargingService = {
   getHistory(params) {
     return api.get("/charging/history", { params });
   },
+  activatePort(points, kioskId, port) {
+    return api.post("/charging/activate", {
+      points,
+      kiosk_id: kioskId,
+      port: port
+    });
+  },
 };
 
 // Points API calls

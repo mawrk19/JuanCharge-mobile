@@ -127,23 +127,31 @@
             <div class="leaves-container" ref="leavesContainer"></div>
             
             <div class="success-content" ref="successContent">
-                <div class="success-icon-circle">
-                    <span class="material-icons">local_florist</span>
+                <div class="success-icon-circle" :class="{ 'charging-icon': successType === 'charging' }">
+                    <span class="material-icons">{{ successIcon || 'local_florist' }}</span>
                 </div>
-                <h2>Thank You!</h2>
-                <p class="community-msg">"Thank you for helping keep the community streets clean instead of just redeeming it."</p>
+                <h2>{{ successTitle || 'Thank You!' }}</h2>
+                <p class="community-msg">{{ successSubMessage || '"Thank you for helping keep the community streets clean instead of just redeeming it."' }}</p>
                 
-                <div class="points-badge">
+                <div class="points-badge" v-if="successType !== 'charging'">
                     <span class="plus">+</span>
                     <span class="amount">{{ pointsEarned }}</span>
                     <span class="label">Points</span>
                 </div>
 
-                <div class="impact-stat">
-                    <span>You saved {{(pointsEarned * 0.05).toFixed(2)}}kg of CO2</span>
+                <div class="points-badge charging-badge" v-else>
+                    <span class="amount">{{ pointsEarned }}</span>
+                    <span class="label">Minutes</span>
                 </div>
 
-                <button @click="resetScan" class="primary-btn glow-btn">Scan Another</button>
+                <div class="impact-stat" v-if="successType !== 'charging'">
+                    <span>You saved {{(pointsEarned * 0.05).toFixed(2)}}kg of CO2</span>
+                </div>
+                <div class="impact-stat" v-else>
+                    <span>Port {{ scannedPortNumber }} is now ACTIVE</span>
+                </div>
+
+                <button @click="resetScan" class="primary-btn glow-btn">Return Home</button>
             </div>
          </div>
 
@@ -157,98 +165,83 @@
 
     <!-- STATE 3: REDEMPTION/CONVERSION -->
     <div v-if="currentState === 'redeeming'" class="redeem-state">
-      <div class="redeem-header">
-        <button class="back-nav-btn" @click="currentState = 'landing'">
-          <span class="material-icons">chevron_left</span>
+      <div class="redeem-header-premium">
+        <button class="back-nav-btn-circle" @click="currentState = 'landing'">
+          <span class="material-icons">arrow_back</span>
         </button>
         <div class="header-titles">
-          <h1>Charging Session</h1>
-          <p>{{ scannedPort || "Port-1" }}</p>
+          <h1>Activate Charging</h1>
+          <div class="port-badge">
+             <span class="material-icons">ev_station</span>
+             {{ scannedPort || "Port-1" }}
+          </div>
         </div>
       </div>
 
-      <div class="redeem-content">
-        <!-- Metric Cards -->
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <label>Available Points</label>
-            <div class="metric-value">{{ store.userPoints || pointsBalance }}</div>
-          </div>
-          <div class="metric-card">
-            <label>Energy Value</label>
-            <div class="metric-value">{{ energyValue.toFixed(1) }} Wh</div>
-          </div>
-        </div>
-
-        <!-- Conversion Row -->
-        <div class="conversion-row">
-          <div class="conv-item">
-            <label>Points to Convert</label>
-            <div class="conv-val">{{ pointsToRedeem || "0" }}</div>
-          </div>
-          <div class="conv-item green-val">
-            <label>Energy</label>
-            <div class="conv-val">
-              {{ (pointsToRedeem * 0.1).toFixed(1) }} Wh
+      <div class="redeem-content-premium">
+        <!-- Balance Card -->
+        <div class="balance-card-glow">
+          <div class="balance-main">
+            <span class="label">Your Balance</span>
+            <div class="value">
+              <span class="num">{{ store.userPoints }}</span>
+              <span class="unit">pts</span>
             </div>
           </div>
-          <div class="conv-item yellow-val">
-            <label>Time</label>
-            <div class="conv-val">{{ pointsToRedeem || 0 }} mins</div>
+          <div class="balance-icon">
+             <span class="material-icons">account_balance_wallet</span>
           </div>
         </div>
 
-        <!-- Keypad -->
-        <div class="keypad">
-          <button
-            v-for="num in [1, 2, 3, 4, 5, 6, 7, 8, 9]"
-            :key="num"
-            class="key-btn"
-            @click="appendNumber(num)"
-          >
-            {{ num }}
-          </button>
-          <button class="key-btn clear-text" @click="clearPoints">CLEAR</button>
-          <button class="key-btn" @click="appendNumber(0)">0</button>
-          <button class="key-btn backspace-btn" @click="backspace">
-            <span class="material-icons">west</span>
-          </button>
-        </div>
+        <!-- Conversion Card -->
+        <div class="conversion-card-premium">
+           <div class="conv-header">
+              <span class="label">Input Points</span>
+              <span class="rate">1 pt = 1 min</span>
+           </div>
+           
+           <div class="points-input-display">
+               <div class="main-val">{{ pointsToRedeem || "0" }}</div>
+               <div class="sub-val">≈ {{ (parseInt(pointsToRedeem || 0) * 0.1).toFixed(1) }} Wh / {{ pointsToRedeem || 0 }} min</div>
+           </div>
 
-        <!-- Presets -->
-        <div class="presets-row">
-          <button
-            v-for="preset in [10, 50, 100, 500]"
-            :key="preset"
-            class="preset-key"
-            @click="addPreset(preset)"
-          >
-            {{ preset }}
-          </button>
+           <!-- Keypad Integrated -->
+           <div class="keypad-grid">
+              <button v-for="num in [1, 2, 3, 4, 5, 6, 7, 8, 9, 'C', 0, '⌫']" 
+                      :key="num" 
+                      class="key-item"
+                      @click="handleKeypad(num)"
+                      :class="{ 'clear-key': num === 'C', 'back-key': num === '⌫' }">
+                <span v-if="num === '⌫'" class="material-icons">backspace</span>
+                <span v-else>{{ num }}</span>
+              </button>
+           </div>
+
+           <!-- Presets -->
+           <div class="presets-pills">
+              <button v-for="preset in [10, 20, 50, 100]" :key="preset" 
+                      class="preset-pill"
+                      @click="addPreset(preset)">
+                +{{ preset }}
+              </button>
+           </div>
         </div>
 
         <button
-          class="final-redeem-btn"
+          class="action-btn-premium"
           @click="handleRedeem"
-          :disabled="!pointsToRedeem || pointsToRedeem > pointsBalance"
+          :disabled="!pointsToRedeem || parseInt(pointsToRedeem) > store.userPoints || loading"
         >
-          <span class="material-icons">bolt</span>
-          Redeem for charging
+          <span v-if="loading" class="material-icons spin">refresh</span>
+          <template v-else>
+            <span class="material-icons">bolt</span>
+            Start Charging Session
+          </template>
         </button>
 
-        <!-- Information Tables -->
-        <div class="info-tables">
-          <div class="how-it-works shadow-sm">
-            <div class="info-title">
-              <span class="material-icons">info</span>
-              How It Works?
-            </div>
-            <div class="info-body">
-              <p>Base: 1 pt = 0.1 Wh = 1 min</p>
-              <p>Port: 5V x 2A = 10W</p>
-              <p>Min: 10 points = 1 Wh = 10 mins</p>
-            </div>
-          </div>
+        <div class="info-note">
+           <span class="material-icons">info</span>
+           Points will be deducted from your available balance.
         </div>
       </div>
     </div>
@@ -264,6 +257,7 @@ import gsap from 'gsap';
 import { qrSecurity } from "@/services/qrSecurity";
 import { secureStorage } from "@/services/secureStorage";
 import { store } from "@/services/store";
+import { chargingService } from "@/services/apiServices";
 // sessionState not defined in the snippet given, assuming it might be needed for active sessions
 // If sessionState is not used, we can remove imports or add placeholder.
 // For now, I will keep local state to make the component functional standalone.
@@ -275,6 +269,8 @@ const currentState = ref("landing"); // landing, scanning, redeeming, result
 const pointsBalance = ref(43); // Mock for now
 const pointsToRedeem = ref("");
 const scannedPort = ref("");
+const scannedKioskCode = ref("");
+const scannedPortNumber = ref(null);
 const manualKioskId = ref("");
 const showManualInput = ref(false);
 
@@ -286,6 +282,10 @@ const paused = ref(false);
 const successMessage = ref("");
 const errorMessage = ref("");
 const pointsEarned = ref(0);
+const successType = ref("store"); // store, charging
+const successTitle = ref("");
+const successSubMessage = ref("");
+const successIcon = ref("");
 const leavesContainer = ref(null);
 const successContent = ref(null);
 
@@ -392,6 +392,15 @@ async function onDetect(detectedCodes) {
                      isSignedVoucher = true;
                      voucherPayload = parsed;
                 }
+                // Case C: Activate Port (Redemption Flow)
+                else if (parsed.action === 'activate_port') {
+                    scannedKioskCode.value = parsed.kiosk_code;
+                    scannedPortNumber.value = parsed.port;
+                    scannedPort.value = `${parsed.kiosk_code} - Port ${parsed.port}`;
+                    currentState.value = 'redeeming';
+                    loading.value = false;
+                    return; // Exit onDetect early since we transitioned state
+                }
             } catch (e) { /* Not JSON */ }
         }
 
@@ -455,6 +464,12 @@ async function claimSignedPoints(rawToken, payload) {
             } else {
                  store.addPoints(payload.amount);
             }
+            
+            successType.value = 'store';
+            successTitle.value = "Thank You!";
+            successSubMessage.value = '"Thank you for helping keep the community streets clean instead of just redeeming it."';
+            successIcon.value = "local_florist";
+            
             currentState.value = 'result';
             
             // Trigger Animation
@@ -540,17 +555,66 @@ const backspace = () => {
 
 const addPreset = (amount) => {
   const current = parseInt(pointsToRedeem.value || 0);
-  if (current + amount <= pointsBalance.value) {
+  if (current + amount <= store.userPoints) {
     pointsToRedeem.value = (current + amount).toString();
   }
 };
 
+const handleKeypad = (num) => {
+    if (num === 'C') clearPoints();
+    else if (num === '⌫') backspace();
+    else appendNumber(num);
+};
+
 const handleRedeem = async () => {
-    // Implement API call for charging redemption
-    alert(`Redeeming ${pointsToRedeem.value} points for charging on ${scannedPort.value}`);
-    // Reset or navigate
-    currentState.value = 'landing';
-    pointsToRedeem.value = "";
+    loading.value = true;
+    errorMessage.value = "";
+    
+    try {
+        const pts = parseInt(pointsToRedeem.value);
+        if (isNaN(pts) || pts <= 0) throw new Error("Please enter points amount");
+        
+        // If we have scanned items, use activatePort, otherwise fallback or handle legacy
+        if (scannedKioskCode.value && scannedPortNumber.value) {
+            const response = await chargingService.activatePort(
+                pts, 
+                scannedKioskCode.value, 
+                scannedPortNumber.value
+            );
+            
+            if (response.data.success) {
+                // Deduct points locally for instant feedback
+                store.subtractPoints(pts);
+                
+                successType.value = 'charging';
+                successTitle.value = "Session Started!";
+                successSubMessage.value = `Your device is now charging at Port ${scannedPortNumber.value}. Enjoy your stay!`;
+                successIcon.value = "bolt";
+                pointsEarned.value = pts; 
+                
+                currentState.value = 'result';
+                
+                // Trigger Animation
+                setTimeout(() => {
+                    animateSuccess();
+                }, 100);
+            } else {
+                throw new Error(response.data.message || "Failed to activate charging");
+            }
+        } else {
+            // Fallback for raw port ID scans (legacy)
+            alert(`Port ID Scan: ${scannedPort.value}`);
+            currentState.value = 'landing';
+        }
+        
+    } catch (err) {
+        console.error(err);
+        errorMessage.value = err.response?.data?.message || err.message || "Redemption failed";
+        currentState.value = 'landing';
+    } finally {
+        loading.value = false;
+        pointsToRedeem.value = "";
+    }
 };
 
 const animateSuccess = () => {
@@ -1195,5 +1259,253 @@ const animateSuccess = () => {
 .final-redeem-btn:disabled {
     opacity: 0.6;
     background: #ccc;
+}
+/* Premium Redemption UI Styles */
+.redeem-state {
+    min-height: 100vh;
+    background: #fdfdfd;
+}
+
+.redeem-header-premium {
+    padding: 2rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: white;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.back-nav-btn-circle {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: #f5f5f5;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #444;
+}
+
+.header-titles h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0;
+    color: #1a1a1a;
+}
+
+.port-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.port-badge span {
+    font-size: 16px;
+}
+
+.redeem-content-premium {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.balance-card-glow {
+    background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+    padding: 1.5rem;
+    border-radius: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.balance-main .label {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.balance-main .value {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.balance-main .num {
+    font-size: 2.2rem;
+    font-weight: 800;
+}
+
+.balance-main .unit {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+.balance-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.conversion-card-premium {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    border: 1px solid #f0f0f0;
+}
+
+.conv-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.conv-header .label {
+    font-weight: 700;
+    color: #444;
+}
+
+.conv-header .rate {
+    font-size: 0.85rem;
+    color: #4CAF50;
+    font-weight: 600;
+}
+
+.points-input-display {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.points-input-display .main-val {
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: #1a1a1a;
+    line-height: 1;
+}
+
+.points-input-display .sub-val {
+    margin-top: 8px;
+    font-size: 0.9rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.keypad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.key-item {
+    padding: 1rem;
+    background: #f8f9fa;
+    border: none;
+    border-radius: 16px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #333;
+    transition: all 0.2s;
+}
+
+.key-item:active {
+    background: #e9ecef;
+    transform: scale(0.95);
+}
+
+.clear-key {
+    color: #d32f2f;
+}
+
+.back-key {
+    color: #666;
+}
+
+.presets-pills {
+    display: flex;
+    gap: 8px;
+    margin-top: 1.5rem;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.preset-pill {
+    padding: 8px 20px;
+    background: white;
+    border: 2px solid #f0f0f0;
+    border-radius: 100px;
+    font-weight: 600;
+    color: #666;
+    white-space: nowrap;
+}
+
+.preset-pill:active {
+    border-color: #4CAF50;
+    color: #4CAF50;
+}
+
+.action-btn-premium {
+    background: #1a1a1a;
+    color: white;
+    padding: 1.25rem;
+    border-radius: 20px;
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 1rem;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.action-btn-premium:disabled {
+    opacity: 0.5;
+}
+
+.info-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.info-note span {
+    font-size: 16px;
+}
+.charging-icon {
+    background: linear-gradient(135deg, #FFD600 0%, #FF9100 100%) !important;
+}
+
+.charging-badge {
+    background: #FFF9C4 !important;
+    border-color: #FFF176 !important;
+}
+
+.charging-badge .amount {
+    color: #F57F17 !important;
+}
+
+.charging-badge .label {
+    color: #FBC02D !important;
 }
 </style>
