@@ -165,9 +165,12 @@
             </div>
          </div>
 
-         <button class="stop-session-btn" @click="stopChargingSession">
-            <span class="material-icons">stop_circle</span>
-            End Session early
+         <button class="stop-session-btn" @click="requestStopSession" :disabled="loading">
+            <span v-if="loading" class="material-icons spin">refresh</span>
+            <template v-else>
+               <span class="material-icons">stop_circle</span>
+               End Session early
+            </template>
          </button>
       </div>
     </div>
@@ -323,6 +326,7 @@ const pointsToRedeem = ref("");
 const scannedPort = ref("");
 const scannedKioskCode = ref("");
 const scannedPortNumber = ref(null);
+const activeSessionId = ref(null);
 const manualKioskId = ref("");
 const manualPortNumber = ref("");
 const showManualInput = ref(false);
@@ -748,6 +752,45 @@ const stopChargingSession = () => {
     }, 100);
 };
 
+const requestStopSession = async () => {
+    const result = await Swal.fire({
+        title: 'End Session?',
+        text: "Are you sure you want to end your charging session early? Unused time will not be refunded.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, stop now',
+        heightAuto: false
+    });
+
+    if (result.isConfirmed) {
+        loading.value = true;
+        try {
+            if (activeSessionId.value) {
+                const response = await chargingService.cancelSession(activeSessionId.value);
+                if (response.data.success) {
+                    stopChargingSession();
+                } else {
+                    throw new Error(response.data.message || "Failed to cancel session on server");
+                }
+            } else {
+                // Fallback if ID is lost but timer is active
+                stopChargingSession();
+            }
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Cancellation Failed',
+                text: err.message || 'Could not stop the session on the kiosk. Please try again.',
+                heightAuto: false
+            });
+        } finally {
+            loading.value = false;
+        }
+    }
+};
+
 const handleRedeem = async () => {
     loading.value = true;
     errorMessage.value = "";
@@ -755,6 +798,8 @@ const handleRedeem = async () => {
     try {
         const pts = parseInt(pointsToRedeem.value);
         if (isNaN(pts) || pts <= 0) throw new Error("Please enter points amount");
+        
+        activeSessionId.value = null; // Reset before starting
         
         // If we have scanned items, use activatePort, otherwise fallback or handle legacy
         if (scannedKioskCode.value && scannedPortNumber.value) {
@@ -773,6 +818,11 @@ const handleRedeem = async () => {
                 successSubMessage.value = `Your device is now charging at Port ${scannedPortNumber.value}. Enjoy your stay!`;
                 successIcon.value = "bolt";
                 pointsEarned.value = pts; 
+                
+                // Store Session ID for cancellation
+                if (response.data.session_id) {
+                    activeSessionId.value = response.data.session_id;
+                }
                 
                 // Start Session Timer
                 startSessionTimer(pts);
