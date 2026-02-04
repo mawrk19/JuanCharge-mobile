@@ -473,9 +473,22 @@ async function onDetect(detectedCodes) {
         } else if (isActivationPort) {
             // >>> REDEEM CHARGING FLOW
             try {
-                // Verify Kiosk Existence by Code
-                const response = await kioskService.getByCode(scannedKioskCode.value);
-                if (response.data && response.data.success !== false) {
+                // Verify Kiosk Existence and Status
+                const response = await kioskService.getStatus(scannedKioskCode.value);
+                const status = response.data;
+
+                if (status && status.success !== false) {
+                    // 1. Connectivity Check
+                    if (status.online === false) {
+                        throw new Error("Kiosk Offline: This station is currently unreachable.");
+                    }
+
+                    // 2. Port Status Check
+                    const portData = status.ports ? status.ports[scannedPortNumber.value] : null;
+                    if (portData && portData.status === 'active') {
+                        throw new Error(`Port Busy: Port ${scannedPortNumber.value} is currently in use.`);
+                    }
+
                     currentState.value = 'redeeming';
                 } else {
                     throw new Error("Kiosk not found");
@@ -485,7 +498,7 @@ async function onDetect(detectedCodes) {
                 await Swal.fire({
                     icon: 'error',
                     title: 'Station Unavailable',
-                    text: 'This charging station is currently not recognized by the system.',
+                    text: err.message || 'This charging station is currently not available.',
                     confirmButtonColor: '#1a1a1a',
                     heightAuto: false
                 });
@@ -618,10 +631,22 @@ const handleManualEntry = async () => {
         
         loading.value = true;
         try {
-            // Validate Kiosk Existence by Code
-            const response = await kioskService.getByCode(kioskId);
+            // Validate Kiosk Existence and Status
+            const response = await kioskService.getStatus(kioskId);
+            const status = response.data;
             
-            if (response.data && response.data.success !== false) {
+            if (status && status.success !== false) {
+                // 1. Connectivity Check
+                if (status.online === false) {
+                    throw new Error("Kiosk Offline: This station is currently unreachable.");
+                }
+
+                // 2. Port Status Check
+                const portData = status.ports ? status.ports[portNum] : null;
+                if (portData && portData.status === 'active') {
+                    throw new Error(`Port Busy: Port ${portNum} is currently in use.`);
+                }
+
                 // Directly set values for redemption
                 scannedKioskCode.value = kioskId;
                 scannedPortNumber.value = portNum;
@@ -634,13 +659,13 @@ const handleManualEntry = async () => {
                 manualPortNumber.value = '';
                 showManualInput.value = false;
             } else {
-                throw new Error("Kiosk not found");
+                throw new Error("Kiosk ID not found. Please check the code and try again.");
             }
         } catch (err) {
             Swal.fire({
                 icon: 'error',
-                title: 'Kiosk Not Found',
-                text: 'The Kiosk ID you entered does not exist. Please check the code and try again.',
+                title: 'Station Unavailable',
+                text: err.message || 'The Kiosk ID you entered is currently not available.',
                 confirmButtonColor: '#1a1a1a',
                 heightAuto: false
             });

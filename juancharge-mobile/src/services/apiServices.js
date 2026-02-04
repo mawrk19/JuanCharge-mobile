@@ -76,6 +76,9 @@ export const kioskService = {
   getById(id) {
     return api.get(`/kiosks/id/${id}`);
   },
+  getStatus(code) {
+    return api.get(`/kiosks/status/${code}`);
+  },
 };
 
 // Charging API calls
