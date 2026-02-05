@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "build:emulator": "CAPACITOR_SERVER_URL=http://10.0.2.2:3001 npm run build && npx cap sync android && cd android && ./gradlew installDebug",
     "start:emulator": "npm run dev -- --host",
-    "icons:generate": "node scripts/generate-icons.js"
+    "icons:generate": "node scripts/generate-icons.js",
+    "cy:run": "cypress run",
+    "test": "start-server-and-test dev http://localhost:3000 cy:run"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
@@ -30,6 +32,8 @@
   "devDependencies": {
     "@capacitor/cli": "^7.4.4",
     "@vitejs/plugin-vue": "^6.0.1",
+    "cypress": "^15.10.0",
+    "start-server-and-test": "^2.1.3",
     "typescript": "^5.9.3",
     "vite": "^7.1.7"
   }

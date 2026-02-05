@@ -86,10 +86,11 @@ export const chargingService = {
   getActiveSession() {
     return api.get("/charging/active");
   },
-  redeemPoints(points, kioskId, sessionId = null) {
+  redeemPoints(points, kioskCode, portNumber, sessionId = null) {
     return api.post("/charging/redeem", {
       points,
-      kiosk_id: kioskId,
+      kiosk_code: kioskCode,
+      port_number: portNumber,
       session_id: sessionId,
     });
   },
@@ -102,10 +103,10 @@ export const chargingService = {
     return api.get("/charging/history", { params });
   },
   activatePort(points, kioskCode, port) {
-    return api.post("/charging/activate", {
+    return api.post("/ports/activate", {
       points,
       kiosk_code: kioskCode,
-      port: port
+      port_number: port
     });
   },
 };

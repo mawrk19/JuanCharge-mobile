@@ -482,15 +482,15 @@ async function onDetect(detectedCodes) {
                 const status = response.data;
 
                 if (status && status.success !== false) {
-                    // 1. Connectivity Check
-                    if (status.online === false) {
-                        throw new Error("Kiosk Offline: This station is currently unreachable.");
+                    // 1. Connectivity Check (per spec: is_online)
+                    if (status.is_online === false) {
+                        throw new Error("KIOSK_OFFLINE: The charging station is currently offline.");
                     }
 
                     // 2. Port Status Check
                     const portData = status.ports ? status.ports[scannedPortNumber.value] : null;
                     if (portData && portData.status === 'active') {
-                        throw new Error(`Port Busy: Port ${scannedPortNumber.value} is currently in use.`);
+                        throw new Error("PORT_BUSY: This charging port is currently in use.");
                     }
 
                     currentState.value = 'redeeming';
@@ -640,15 +640,15 @@ const handleManualEntry = async () => {
             const status = response.data;
             
             if (status && status.success !== false) {
-                // 1. Connectivity Check
-                if (status.online === false) {
-                    throw new Error("Kiosk Offline: This station is currently unreachable.");
+                // 1. Connectivity Check (per spec: is_online)
+                if (status.is_online === false) {
+                    throw new Error("KIOSK_OFFLINE: The charging station is currently offline.");
                 }
 
                 // 2. Port Status Check
                 const portData = status.ports ? status.ports[portNum] : null;
                 if (portData && portData.status === 'active') {
-                    throw new Error(`Port Busy: Port ${portNum} is currently in use.`);
+                    throw new Error("PORT_BUSY: This charging port is currently in use.");
                 }
 
                 // Directly set values for redemption
