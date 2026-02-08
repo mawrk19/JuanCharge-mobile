@@ -14,10 +14,23 @@
       <!-- Month Card -->
       <div class="month-card shadow-sm">
         <div class="month-info">
-          <h3>December 2025</h3>
-          <p>Resets in 20 days</p>
+          <h3>{{ currentPeriodLabel }}</h3>
+          <p>{{ resetInfo }}</p>
         </div>
-        <div class="competition-badge">Monthly Competition</div>
+        <div class="competition-badge">JuanLove Competition</div>
+      </div>
+
+      <!-- Period Filter -->
+      <div class="filter-container">
+        <button 
+          v-for="p in periods" 
+          :key="p.id"
+          class="filter-pill"
+          :class="{ active: currentPeriod === p.id }"
+          @click="changePeriod(p.id)"
+        >
+          {{ p.label }}
+        </button>
       </div>
 
       <!-- Top 3 Rewards -->
@@ -76,11 +89,13 @@
         </div>
       </div>
 
-      <div class="section-title">Unranked Users</div>
+      <div class="section-title">Your Ranking</div>
 
-      <!-- User Stats (Unranked view style) -->
+      <!-- User Stats Card -->
       <div class="rank-card shadow-sm user-stats-card">
-        <div class="rank-number unranked">-</div>
+        <div class="rank-number" :class="getRankClass(myStats.rank)">
+          {{ myStats.rank }}
+        </div>
         <div class="user-details">
           <div class="user-header">
             <h4>You</h4>
@@ -110,13 +125,38 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted } from "vue";
+import { reactive, ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { dashboardService } from "@/services/apiServices";
 
 const router = useRouter();
 const loading = ref(true);
 const leaderboardData = ref([]);
+const currentPeriod = ref('all');
+
+const periods = [
+  { id: 'all', label: 'All-Time' },
+  { id: 'monthly', label: 'Monthly' },
+  { id: 'weekly', label: 'Weekly' }
+];
+
+const currentPeriodLabel = computed(() => {
+  if (currentPeriod.value === 'monthly') {
+    return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  if (currentPeriod.value === 'weekly') {
+    return 'This Week';
+  }
+  return 'All-Time Rankings';
+});
+
+const resetInfo = computed(() => {
+  if (currentPeriod.value === 'all') return 'Lifetime Achievement';
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const remaining = lastDay - now.getDate();
+  return `Resets in ${remaining} days`;
+});
 
 const myStats = reactive({
   points: 0,
@@ -130,30 +170,31 @@ const goBack = () => {
   router.back();
 };
 
+const changePeriod = (id) => {
+  currentPeriod.value = id;
+  fetchLeaderboard();
+};
+
 const fetchLeaderboard = async () => {
   loading.value = true;
   try {
-    const response = await dashboardService.getLeaderboard();
+    const response = await dashboardService.getLeaderboard({ period: currentPeriod.value });
     if (response.data && response.data.data) {
       leaderboardData.value = response.data.data.rankings || [];
 
       // Update my stats if provided in response, but prioritize dashboard stats
-      if (response.data.data.user_stats) {
-        const userStats = response.data.data.user_stats;
-        // Only update if not already set by fetchStats or if fetching from leaderboard
-        myStats.points = Math.max(myStats.points, userStats.points || 0);
-        myStats.recycled = Math.max(
-          myStats.recycled,
-          userStats.recycled_count || 0
-        );
-        myStats.rank = userStats.rank || myStats.rank;
+        // Update my stats if provided in response
+        if (response.data.data.user_stats) {
+          const userStats = response.data.data.user_stats;
+          myStats.points = userStats.points || 0;
+          myStats.recycled = userStats.recycled_count || 0;
+          myStats.rank = userStats.rank || "-";
 
-        calculateProgress();
-      }
+          calculateProgress();
+        }
     }
   } catch (error) {
     console.error("Failed to fetch leaderboard:", error);
-    fallbackMockData();
   } finally {
     loading.value = false;
   }
@@ -186,53 +227,11 @@ const fetchStats = async () => {
     }
   } catch (error) {
     console.error("Failed to fetch stats:", error);
-    fallbackMockData();
   } finally {
     loading.value = false;
   }
 };
 
-const fallbackMockData = () => {
-  if (leaderboardData.value.length === 0) {
-    leaderboardData.value = [
-      {
-        rank: 1,
-        name: "Maria Santos",
-        recycled: 125,
-        points: 1250,
-        bonus: 300,
-      },
-      {
-        rank: 2,
-        name: "Juan Dela Cruz",
-        recycled: 98,
-        points: 1100,
-        bonus: 200,
-      },
-      { rank: 3, name: "Ana Reyes", recycled: 87, points: 950, bonus: 100 },
-      {
-        rank: 4,
-        name: "Carlos Mendoza",
-        recycled: 76,
-        points: 820,
-        bonus: null,
-      },
-      {
-        rank: 5,
-        name: "Miguel Kornejo",
-        recycled: 54,
-        points: 820,
-        bonus: null,
-      },
-    ];
-  }
-  // Only set mock stats if real points are 0
-  if (myStats.points === 0) {
-    myStats.points = 43;
-    myStats.recycled = 12;
-    calculateProgress();
-  }
-};
 
 const getRankClass = (rank) => {
   if (rank === 1) return "rank-1";
@@ -253,7 +252,7 @@ onMounted(() => {
   min-height: 100vh;
   background-color: var(--bg-primary);
   font-family: "Inter", sans-serif;
-  padding-bottom: 40px;
+  padding-bottom: 120px;
 }
 
 .header-container {
@@ -300,9 +299,37 @@ onMounted(() => {
   bottom: 7 0px;
 }
 
+/* Filter Container */
+.filter-container {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+
+.filter-pill {
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: white;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.filter-pill.active {
+  background: #4caf50;
+  color: white;
+  border-color: #4caf50;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
 /* Month Card */
 .month-card {
-  background: var(--bg-secondary);
+  background: white;
   border-radius: 16px;
   padding: 16px;
   display: flex;

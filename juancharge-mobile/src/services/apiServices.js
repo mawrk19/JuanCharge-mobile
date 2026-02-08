@@ -57,8 +57,8 @@ export const dashboardService = {
   getPointsBalance() {
     return api.get("/patron/points/balance");
   },
-  getLeaderboard() {
-    return api.get("/patron/leaderboard");
+  getLeaderboard(params) {
+    return api.get("/patron/leaderboard", { params });
   },
   getAchievements() {
     return api.get("/patron/achievements");

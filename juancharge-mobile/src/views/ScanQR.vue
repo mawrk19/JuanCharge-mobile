@@ -432,15 +432,17 @@ async function onDetect(detectedCodes) {
             // Try to just decode it to check structure.
             const decoded = qrSecurity.decode(rawValue);
             
-            if (decoded && decoded.points && decoded.signature) {
+            if (decoded && (decoded.points || decoded.amount) && decoded.signature) {
                  console.log("Found unverified voucher (likely HS256), sending to backend...");
                  isSignedVoucher = true;
                  voucherPayload = {
                      ...decoded,
                      action: 'store_points',
-                     amount: decoded.points
+                     amount: decoded.points || decoded.amount,
+                     points: decoded.points || decoded.amount
                  };
-            } else {
+            }
+ else {
                  // Not a voucher we recognize
                  // console.log("Not a signed token:", jwtErr.message);
             }
@@ -457,9 +459,13 @@ async function onDetect(detectedCodes) {
                     voucherPayload = parsed;
                 }
                 // Case B: JSON with signature (User provided format)
-                else if (parsed.action === 'store_points' && parsed.signature) {
+                else if (parsed.signature && (parsed.points || parsed.amount || parsed.action === 'store_points')) {
                      isSignedVoucher = true;
-                     voucherPayload = parsed;
+                     voucherPayload = {
+                         ...parsed,
+                         points: parsed.points || parsed.amount,
+                         amount: parsed.amount || parsed.points
+                     };
                 }
                 // Case C: Activate Port (Redemption Flow)
                 else if (parsed.action === 'activate_port' && parsed.kiosk_code) {
@@ -557,7 +563,8 @@ async function claimSignedPoints(rawToken, payload) {
     try {
         const response = await axios.post(`${apiBase}/patron/points/claim-signed`, {
             token: rawToken,
-            ...payload // Spread decoded fields (kiosk_code, txn_id, points, signature, etc.)
+            ...payload,
+            points: payload.points || payload.amount // Ensure backend 'points' field is set
         }, {
             headers: { Authorization: `Bearer ${apiToken}` }
         });
