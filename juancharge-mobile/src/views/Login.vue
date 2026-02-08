@@ -14,8 +14,8 @@
         <div class="logo-wrapper">
           <img src="/logo.png" alt="JuanCharge Logo" class="logo" />
         </div>
-        <h1>{{ step === 1 ? "Welcome" : "Check your messages" }}</h1>
-        <p v-if="step === 1">Enter your email or mobile number to continue</p>
+        <h1>{{ step === 1 ? "Welcome" : "Check your email" }}</h1>
+        <p v-if="step === 1">Enter your email address to continue</p>
         <p v-else>
           We sent a 6-digit code to <strong>{{ form.identifier }}</strong>
         </p>
@@ -27,13 +27,13 @@
           <!-- STEP 1: IDENTITY -->
           <div v-if="step === 1">
             <div class="form-section">
-              <label>Email or Mobile Number</label>
+              <label>Email Address</label>
               <div class="input-wrapper">
-                <span class="material-icons field-icon">person_outline</span>
+                <span class="material-icons field-icon">mail_outline</span>
                 <input
                   v-model="form.identifier"
-                  type="text"
-                  placeholder="e.g. name@email.com or 09123456789"
+                  type="email"
+                  placeholder="e.g. name@email.com"
                   required
                   :disabled="loading"
                 />
@@ -92,7 +92,7 @@
             class="change-number-btn"
             @click="step = 1"
           >
-            Change email or mobile number
+            Change email address
           </button>
         </form>
       </div>
@@ -213,7 +213,7 @@ const handleSubmit = () => {
 
 const startOtpProcess = async () => {
   if (!form.identifier) {
-    error.value = "Please enter your email or mobile number";
+    error.value = "Please enter your email address";
     return;
   }
 
