@@ -266,7 +266,12 @@ const verifyCode = async () => {
       await secureStorage.setTokenExpiresAt(response.data.token_expires_at);
 
       // Navigate
-      router.push("/home");
+      const user = response.data.user;
+      if (!user?.first_name || !user?.last_name) {
+        router.push("/account-setup");
+      } else {
+        router.push("/home");
+      }
     }
   } catch (err) {
     console.error("[DEBUG] Verification error:", err.message);

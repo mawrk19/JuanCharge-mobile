@@ -39,7 +39,13 @@ async function checkAutoLogin() {
         "[DEBUG] Already logged in with valid token, skipping auto-login"
       );
       statusMessage.value = "Welcome back!";
-      setTimeout(() => router.push("/home"), 500);
+      
+      const userData = await secureStorage.getUserData();
+      if (!userData?.first_name || !userData?.last_name) {
+        setTimeout(() => router.push("/account-setup"), 500);
+      } else {
+        setTimeout(() => router.push("/home"), 500);
+      }
       return;
     }
 
@@ -69,7 +75,13 @@ async function checkAutoLogin() {
 
         console.log("✅ Auto-login successful");
         statusMessage.value = "Welcome back!";
-        setTimeout(() => router.push("/home"), 500);
+        
+        const user = response.data.user;
+        if (!user?.first_name || !user?.last_name) {
+          setTimeout(() => router.push("/account-setup"), 500);
+        } else {
+          setTimeout(() => router.push("/home"), 500);
+        }
       } else {
         console.warn("[DEBUG] Auto-login failed (not success):", response.data);
         statusMessage.value = "Session expired";

@@ -13,6 +13,7 @@ import History from "../views/History.vue";
 
 import Splash from "../views/Splash.vue";
 import GetStarted from "../views/GetStarted.vue";
+import AccountSetup from "../views/AccountSetup.vue";
 import { secureStorage } from "../services/secureStorage";
 
 const routes = [
@@ -33,6 +34,12 @@ const routes = [
     name: "Login",
     component: Login,
     meta: { title: "Login", requiresGuest: true },
+  },
+  {
+    path: "/account-setup",
+    name: "AccountSetup",
+    component: AccountSetup,
+    meta: { title: "Complete Profile", requiresAuth: true },
   },
 
   {
@@ -111,6 +118,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   const apiToken = await secureStorage.getApiToken();
+  const userData = await secureStorage.getUserData();
 
   // Check if route requires authentication
   if (to.meta.requiresAuth && !apiToken) {
@@ -118,8 +126,18 @@ router.beforeEach(async (to, from, next) => {
   }
   // Check if route requires guest (already logged in users shouldn't access)
   else if (to.meta.requiresGuest && apiToken) {
-    next("/home");
-  } else {
+    // If logged in, ensure profile is complete
+    if (!userData?.first_name || !userData?.last_name) {
+      next("/account-setup");
+    } else {
+      next("/home");
+    }
+  } 
+  // Redirect to account setup if profile is incomplete and user is authenticated
+  else if (apiToken && !userData?.first_name && to.path !== "/account-setup" && to.meta.requiresAuth) {
+    next("/account-setup");
+  }
+  else {
     next();
   }
 });
