@@ -51,18 +51,7 @@
           </div>
         </div>
 
-        <div class="form-section">
-          <label>Contact Number</label>
-          <div class="input-wrapper">
-            <span class="material-icons field-icon">phone</span>
-            <input
-              v-model="form.phone"
-              type="tel"
-              placeholder="09xxxxxxxxx"
-              :disabled="updating"
-            />
-          </div>
-        </div>
+
 
         <div class="action-footer">
           <button type="submit" class="save-btn" :disabled="updating">
@@ -86,8 +75,7 @@ const updating = ref(false);
 const form = ref({
   first_name: "",
   last_name: "",
-  email: "",
-  phone: "",
+  email: ""
 });
 
 const fetchProfile = async () => {
@@ -103,8 +91,7 @@ const fetchProfile = async () => {
     form.value = {
       first_name: user.first_name || "",
       last_name: user.last_name || "",
-      email: user.email || "",
-      phone: user.phone || user.phone_number || user.contact || "",
+      email: user.email || ""
     };
   } catch (err) {
     console.error("[DEBUG] EditProfile - Profile load error:", err.message);

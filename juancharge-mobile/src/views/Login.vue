@@ -113,6 +113,7 @@ import { reactive, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { authService } from "@/services/apiServices";
 import { secureStorage } from "@/services/secureStorage";
+import { normalizeAuthUser } from "@/services/authUser";
 import axios from "axios";
 import { onMounted } from "vue";
 
@@ -260,13 +261,18 @@ const verifyCode = async () => {
         `device-${btoa(form.identifier).slice(0, 16)}`;
       console.log("[DEBUG] Setting device token for persistence:", deviceToken);
 
+      const normalizedUser = normalizeAuthUser(
+        response.data.user || {},
+        response.data
+      );
+
       await secureStorage.setDeviceToken(deviceToken);
       await secureStorage.setApiToken(response.data.api_token);
-      await secureStorage.setUserData(response.data.user);
+      await secureStorage.setUserData(normalizedUser);
       await secureStorage.setTokenExpiresAt(response.data.token_expires_at);
 
       // Navigate
-      const user = response.data.user;
+      const user = normalizedUser;
       if (!user?.first_name || !user?.last_name) {
         router.push("/account-setup");
       } else {
@@ -298,7 +304,7 @@ const verifyCode = async () => {
   box-sizing: border-box;
   overflow-y: auto;
   position: fixed;
-  top: 0;
+  top: var(--app-safe-top, 12px);
   left: 0;
   right: 0;
   bottom: 0;

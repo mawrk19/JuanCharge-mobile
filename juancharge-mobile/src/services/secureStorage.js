@@ -1,4 +1,5 @@
 import { Preferences } from "@capacitor/preferences";
+import { normalizeAuthUser } from "./authUser";
 
 /**
  * Secure Storage Service using Capacitor Preferences
@@ -53,9 +54,10 @@ export const secureStorage = {
    * Store user data
    */
   async setUserData(userData) {
+    const normalizedUser = normalizeAuthUser(userData || {});
     await Preferences.set({
       key: this.USER_DATA,
-      value: JSON.stringify(userData),
+      value: JSON.stringify(normalizedUser),
     });
   },
 
@@ -155,7 +157,8 @@ if (typeof window !== "undefined" && !window.Capacitor) {
     },
 
     async setUserData(userData) {
-      localStorage.setItem(this.USER_DATA, JSON.stringify(userData));
+      const normalizedUser = normalizeAuthUser(userData || {});
+      localStorage.setItem(this.USER_DATA, JSON.stringify(normalizedUser));
     },
 
     async getUserData() {

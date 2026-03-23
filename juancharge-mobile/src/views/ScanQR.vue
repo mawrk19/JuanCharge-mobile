@@ -1130,7 +1130,7 @@ const animateSuccess = () => {
 /* Scanner Overlay */
 .scanning-state {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: var(--app-safe-top, 12px); left: 0; right: 0; bottom: 0;
     background: black;
     z-index: 999;
 }
@@ -1241,7 +1241,7 @@ const animateSuccess = () => {
 /* Success State Enhanced */
 .result-state {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: var(--app-safe-top, 12px); left: 0; right: 0; bottom: 0;
     background: white;
     z-index: 1000;
     display: flex;

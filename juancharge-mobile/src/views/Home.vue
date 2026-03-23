@@ -1,7 +1,7 @@
 <template>
   <div class="home-page">
     <!-- Top Section (Header + Points Card) -->
-    <div class="top-section">
+    <div class="top-section" ref="topSectionRef">
       <!-- Header -->
       <div class="header">
         <div class="greeting">
@@ -171,41 +171,14 @@
       </div>
 
       <!-- Environmental Impact -->
-      <div class="section-container">
-        <div class="impact-card">
-          <div class="impact-header">
-            <div class="impact-icon-box">
-              <span class="material-icons">bar_chart</span>
-            </div>
-            <h4>Your Environmental Impact</h4>
-          </div>
-
-          <p class="impact-desc">
-            You've helped reduce
-            <span class="highlight">{{ stats.co2_saved_kg || 0 }}kg</span> of
-            waste this month!
-          </p>
-
-          <!-- Progress Bar -->
-          <div class="progress-container">
-            <div
-              class="progress-bar"
-              :style="{ width: calculatedProgress + '%' }"
-            ></div>
-          </div>
-
-          <p class="impact-footer">
-            49 more kilograms to reach your monthly goal
-          </p>
-        </div>
-      </div>
+      
     </div>
     <!-- End scroll content -->
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from "vue";
+import { ref, onMounted, computed, onUnmounted, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { secureStorage } from "@/services/secureStorage";
 import {
@@ -216,6 +189,9 @@ import {
 
 import { sessionState } from "@/services/sessionState";
 import { store } from "@/services/store";
+
+import gsap from 'gsap';
+import { bounceGradient } from '@/gsap-bounce-gradient';
 
 const router = useRouter();
 const user = ref(null);
@@ -240,7 +216,11 @@ const calculatedProgress = computed(() => {
   return Math.min((current / goal) * 100, 100);
 });
 
-// Polling for Active Session is now handled globally in App.vue
+const topSectionRef = ref(null);
+
+const animateGradient = () => {
+  if (topSectionRef.value) bounceGradient(topSectionRef.value);
+};
 
 onMounted(async () => {
   // Get User
@@ -283,6 +263,10 @@ onMounted(async () => {
 
   // Get Recent Activity
   fetchRecentActivity();
+
+  // Animate gradient after DOM update
+  await nextTick();
+  animateGradient();
 });
 
 const fetchRecentActivity = async () => {

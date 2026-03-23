@@ -41,18 +41,7 @@
             </div>
           </div>
 
-          <div class="form-section">
-            <label>Contact Number (Optional)</label>
-            <div class="input-wrapper">
-              <span class="material-icons field-icon">phone</span>
-              <input
-                v-model="form.phone"
-                type="tel"
-                placeholder="09xxxxxxxxx"
-                :disabled="loading"
-              />
-            </div>
-          </div>
+
 
           <div v-if="error" class="error-message">
             {{ error }}
@@ -80,6 +69,7 @@ import { reactive, ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { authService } from "@/services/apiServices";
 import { secureStorage } from "@/services/secureStorage";
+import { normalizeAuthUser } from "@/services/authUser";
 import Swal from "sweetalert2";
 
 const router = useRouter();
@@ -122,7 +112,9 @@ const handleSetup = async () => {
         // Ensure backend returned data is preferred if provided
         ...(response.data.user || response.data.data || {})
     };
-    await secureStorage.setUserData(updatedUser);
+    await secureStorage.setUserData(
+      normalizeAuthUser(updatedUser, response.data)
+    );
 
     await Swal.fire({
       title: "Success!",

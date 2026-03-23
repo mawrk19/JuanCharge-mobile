@@ -39,7 +39,9 @@ onUnmounted(() => {
 
 <template>
   <div id="app">
-    <router-view />
+    <transition name="page-fade" mode="out-in">
+      <router-view />
+    </transition>
     <FloatingChargingWidget />
     <BottomNav v-if="showBottomNav" />
     <ToastContainer />
@@ -59,6 +61,10 @@ html {
   height: 100%;
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
+}
+
+:root {
+  --app-safe-top: calc(env(safe-area-inset-top, 0px) + 12px);
 }
 
 body {
@@ -84,6 +90,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
+  padding-top: var(--app-safe-top);
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -113,5 +120,17 @@ button {
 .app-content > * {
   max-width: 100vw;
   overflow-x: hidden;
+}
+
+.page-fade-enter-active, .page-fade-leave-active {
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.page-fade-enter-from, .page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(24px) scale(0.98);
+}
+.page-fade-enter-to, .page-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 </style>

@@ -26,12 +26,6 @@
           }}
         </div>
       </div>
-      <div class="profile-arrow" @click="router.push('/settings/edit-profile')">
-        <button class="edit-trigger-btn">
-          Edit
-          <span class="material-icons">chevron_right</span>
-        </button>
-      </div>
     </div>
 
     <!-- Loading State -->
@@ -42,6 +36,15 @@
     <!-- Account Section -->
     <div class="section-title">Account</div>
     <div class="card settings-group">
+      <div class="list-item" @click="router.push('/settings/edit-profile')">
+        <div class="item-icon">
+          <span class="material-icons">edit</span>
+        </div>
+        <div class="item-content">Edit Profile</div>
+        <div class="item-action">
+          <span class="material-icons">chevron_right</span>
+        </div>
+      </div>
       <div class="list-item" @click="openLink('permissions')">
         <div class="item-icon">
           <span class="material-icons">verified_user</span>
@@ -80,7 +83,7 @@
           </label>
         </div>
       </div>
-      <div class="list-item">
+      <!-- <div class="list-item">
         <div class="item-icon">
           <span class="material-icons">sync</span>
         </div>
@@ -94,7 +97,7 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-      </div>
+      </div> -->
       <div class="list-item">
         <div class="item-icon">
           <span class="material-icons">dark_mode</span>
@@ -157,6 +160,30 @@
       </div>
     </div>
 
+    <!-- Danger Zone -->
+    <div class="section-title">Danger Zone</div>
+    <div class="card settings-group">
+      <div
+        class="list-item danger-item"
+        @click="deleteAccount"
+        :class="{ disabled: deletingAccount }"
+      >
+        <div class="item-icon danger-icon">
+          <span class="material-icons">delete_forever</span>
+        </div>
+        <div class="item-content">
+          <div class="item-title danger-text">Delete Account</div>
+          <div class="item-subtitle">
+            Permanently remove your account and all associated data
+          </div>
+        </div>
+        <div class="item-action danger-text">
+          <span class="material-icons" v-if="!deletingAccount">chevron_right</span>
+          <span v-else>...</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Footer -->
     <div class="page-footer">
       <p>Version 1.0.0</p>
@@ -178,6 +205,7 @@ import { ref, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import { authService } from "@/services/apiServices";
 import { secureStorage } from "@/services/secureStorage";
+import { normalizeAuthUser } from "@/services/authUser";
 import { useTheme } from "@/composables/useTheme";
 import Swal from "sweetalert2";
 
@@ -188,6 +216,7 @@ const { isDark, toggleTheme } = useTheme();
 const userProfile = ref({});
 const loading = ref(true);
 const loggingOut = ref(false);
+const deletingAccount = ref(false);
 const deviceId = ref("device_" + Math.random().toString(36).substr(2, 9));
 
 const preferences = ref({
@@ -206,7 +235,12 @@ const fetchProfile = async () => {
   loading.value = true;
   try {
     const response = await authService.me();
-    userProfile.value = response.data.user || response.data.data || {};
+    const normalizedUser = normalizeAuthUser(
+      response.data.user || response.data.data || {},
+      response.data
+    );
+    userProfile.value = normalizedUser;
+    await secureStorage.setUserData(normalizedUser);
   } catch (err) {
     console.error("Profile load error", err);
   } finally {
@@ -255,6 +289,58 @@ const logout = async () => {
   } finally {
     await secureStorage.clearAll();
     router.push("/login");
+  }
+};
+
+const deleteAccount = async () => {
+  if (deletingAccount.value) return;
+
+  const confirmDelete = await Swal.fire({
+    title: "Delete account?",
+    text: "This action is permanent and cannot be undone.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#e74c3c",
+    cancelButtonColor: "#6c757d",
+    confirmButtonText: "Continue",
+  });
+
+  if (!confirmDelete.isConfirmed) return;
+
+  const finalConfirm = await Swal.fire({
+    title: "Final confirmation",
+    text: "Are you sure you want to permanently delete your JuanCharge account?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#e74c3c",
+    cancelButtonColor: "#6c757d",
+    confirmButtonText: "Yes, delete it",
+  });
+
+  if (!finalConfirm.isConfirmed) return;
+
+  deletingAccount.value = true;
+  try {
+    await authService.deleteAccount();
+    await secureStorage.clearAll();
+    await Swal.fire({
+      title: "Account deleted",
+      text: "Your account has been permanently removed.",
+      icon: "success",
+      confirmButtonColor: "#42b883",
+    });
+    router.push("/get-started");
+  } catch (err) {
+    Swal.fire({
+      title: "Delete failed",
+      text:
+        err.response?.data?.message ||
+        "We couldn't delete your account right now. Please try again.",
+      icon: "error",
+      confirmButtonColor: "#e74c3c",
+    });
+  } finally {
+    deletingAccount.value = false;
   }
 };
 
@@ -335,16 +421,22 @@ onMounted(() => {
 
 .profile-avatar {
   width: 60px;
-  height: 60px;
+  aspect-ratio: 1/1;
+  min-width: 48px;
+  min-height: 48px;
+  max-width: 100px;
+  max-height: 100px;
   border-radius: 50%;
   background: var(--accent-color);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 2rem;
   font-weight: 600;
   margin-right: 16px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .profile-info {
@@ -441,6 +533,20 @@ onMounted(() => {
 /* Device Section specific */
 .device-item {
   border-bottom: none;
+}
+
+.danger-item {
+  cursor: pointer;
+}
+
+.danger-item.disabled {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.danger-icon,
+.danger-text {
+  color: var(--error-color);
 }
 
 .device-info-box {

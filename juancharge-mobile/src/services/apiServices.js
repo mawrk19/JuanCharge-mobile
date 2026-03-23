@@ -29,6 +29,9 @@ export const authService = {
   updateProfile(data) {
     return api.put("/auth/profile", data);
   },
+  deleteAccount() {
+    return api.delete("/auth/profile");
+  },
   changePassword(data) {
     return api.post("/auth/change-password", data);
   },

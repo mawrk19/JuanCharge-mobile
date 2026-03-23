@@ -14,6 +14,7 @@ import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { authService } from "@/services/apiServices";
 import { secureStorage } from "@/services/secureStorage";
+import { normalizeAuthUser } from "@/services/authUser";
 
 const router = useRouter();
 const statusMessage = ref("Checking credentials...");
@@ -69,14 +70,19 @@ async function checkAutoLogin() {
       console.log("[DEBUG] Auto-login response:", response.data);
 
       if (response.data.success) {
+        const normalizedUser = normalizeAuthUser(
+          response.data.user || {},
+          response.data
+        );
+
         await secureStorage.setApiToken(response.data.api_token);
-        await secureStorage.setUserData(response.data.user);
+        await secureStorage.setUserData(normalizedUser);
         await secureStorage.setTokenExpiresAt(response.data.token_expires_at);
 
         console.log("✅ Auto-login successful");
         statusMessage.value = "Welcome back!";
         
-        const user = response.data.user;
+        const user = normalizedUser;
         if (!user?.first_name || !user?.last_name) {
           setTimeout(() => router.push("/account-setup"), 500);
         } else {

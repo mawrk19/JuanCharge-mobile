@@ -219,7 +219,7 @@ const handleRegister = async () => {
   box-sizing: border-box;
   overflow-y: auto;
   position: fixed;
-  top: 0;
+  top: var(--app-safe-top, 12px);
   left: 0;
   right: 0;
   bottom: 0;
