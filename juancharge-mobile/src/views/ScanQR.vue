@@ -3,6 +3,9 @@
     <!-- STATE 1: LANDING PAGE -->
     <div v-if="currentState === 'landing'" class="landing-state">
       <div class="page-header white-header">
+        <button class="back-btn-float" @click="router.push('/home')">
+            <span class="material-icons">chevron_left</span>
+        </button>
         <h1>Scan QR Code</h1>
         <p>Scan to charge your device</p>
       </div>
@@ -119,10 +122,15 @@
                 <button @click="retryCamera">Retry</button>
             </div>
 
-            <button class="cancel-scan-btn overlay-cancel" @click="stopScanning">
-                <span class="material-icons">close</span>
-                Cancel
-            </button>
+            <div class="overlay-actions-stack">
+                <button class="cancel-scan-btn overlay-cancel" @click="stopScanning">
+                    <span class="material-icons">close</span>
+                    Cancel
+                </button>
+                <button class="manual-input-link-overlay" @click="currentState = 'landing'; showManualInput = true">
+                    Enter ID manually
+                </button>
+            </div>
         </div>
       </div>
     </div>
@@ -320,7 +328,7 @@ import Swal from 'sweetalert2';
 const router = useRouter();
 
 // State Management
-const currentState = ref("landing"); // landing, scanning, redeeming, result
+const currentState = ref("scanning"); // scanning, landing, redeeming, result
 const pointsBalance = ref(43); // Mock for now
 const pointsToRedeem = ref("");
 const scannedPort = ref("");
@@ -373,8 +381,7 @@ function startScanning() {
 }
 
 function stopScanning() {
-    currentState.value = 'landing';
-    paused.value = false;
+    router.push('/home');
 }
 
 function retryCamera() {
@@ -1176,21 +1183,57 @@ const animateSuccess = () => {
     100% { transform: translateY(250px); }
 }
 
-.overlay-cancel {
+.overlay-actions-stack {
     position: absolute;
-    bottom: 2rem;
+    bottom: 60px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 20;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    z-index: 2000;
+}
+
+.overlay-cancel {
     background: rgba(255,255,255,0.2);
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
     border: 1px solid rgba(255,255,255,0.4);
     color: white;
-    padding: 0.8rem 1.5rem;
+    padding: 1rem 2.5rem;
     border-radius: 30px;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.manual-input-link-overlay {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.8);
+    text-decoration: underline;
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 0.5rem;
+}
+
+.back-btn-float {
+    position: absolute;
+    top: 1.5rem;
+    left: 1rem;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: #f5f5f5;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    z-index: 10;
 }
 
 .camera-placeholder {

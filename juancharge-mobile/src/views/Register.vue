@@ -79,13 +79,24 @@
             </div>
           </div>
 
+          <!-- Terms and Agreement Checkbox -->
+          <div class="form-section terms-section">
+            <label class="checkbox-container">
+              <input type="checkbox" v-model="form.accepted_terms" required />
+              <span class="checkmark"></span>
+              <span class="terms-text">
+                I agree to the <a href="#" @click.prevent="showTerms">Terms of Service</a> and <a href="#" @click.prevent="showPrivacy">Privacy Policy</a>
+              </span>
+            </label>
+          </div>
+
           <!-- Error Message -->
           <div v-if="error" class="error-message">
             {{ error }}
           </div>
 
           <!-- Submit Button -->
-          <button type="submit" class="submit-btn" :disabled="loading">
+          <button type="submit" class="submit-btn" :disabled="loading || !form.accepted_terms">
             {{ loading ? "Creating Account..." : "Create Account & Continue" }}
           </button>
 
@@ -118,6 +129,7 @@
 import { reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { authService } from "@/services/apiServices";
+import Swal from "sweetalert2";
 
 const router = useRouter();
 
@@ -126,19 +138,55 @@ const form = reactive({
   last_name: "",
   email: "",
   password: "",
+  accepted_terms: false,
 });
 
 const showPassword = ref(false);
 const loading = ref(false);
 const error = ref(null);
 
+const showTerms = () => {
+  Swal.fire({
+    title: "Terms of Service",
+    html: `
+      <div style="text-align: left; max-height: 300px; overflow-y: auto; font-size: 14px;">
+        <p>By using JuanCharge, you agree to our terms of service regarding the use of charging stations and payment processing.</p>
+        <p>Charging fees are set by station owners. JuanCharge acts as a platform for these services.</p>
+        <p>A 2.5% convenience fee applies to all top-ups.</p>
+      </div>
+    `,
+    confirmButtonColor: "#42b883",
+  });
+};
+
+const showPrivacy = () => {
+  Swal.fire({
+    title: "Privacy Policy",
+    html: `
+      <div style="text-align: left; max-height: 300px; overflow-y: auto; font-size: 14px;">
+        <p>We value your privacy. Your data is used only to provide and improve our services.</p>
+        <p>We collect location data to help you find charging stations near you.</p>
+        <p>Your payment information is securely processed through licensed third-party providers (PayMongo, etc.).</p>
+      </div>
+    `,
+    confirmButtonColor: "#42b883",
+  });
+};
+
 const handleRegister = async () => {
+  if (!form.accepted_terms) {
+    error.value = "You must agree to the Terms of Service and Privacy Policy";
+    return;
+  }
   loading.value = true;
   error.value = null;
 
   // Prepare payload - add missing fields expected by backend
   const payload = {
-    ...form,
+    first_name: form.first_name,
+    last_name: form.last_name,
+    email: form.email,
+    password: form.password,
     password_confirmation: form.password, // Auto-confirm
     contact: "", // Empty contact as it matches "HBO style" minimal info
   };
@@ -423,6 +471,78 @@ input:focus {
   margin-bottom: 16px;
   font-size: 13px;
   text-align: center;
+}
+
+/* Checkbox Styles */
+.terms-section {
+  margin-bottom: 16px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+  position: relative;
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  height: 20px;
+  width: 20px;
+  background-color: var(--bg-tertiary);
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  border: 1px solid var(--border-color);
+  position: relative;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+  background-color: var(--bg-tertiary);
+  border-color: #42b883;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: #42b883;
+  border-color: #42b883;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.terms-text {
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.terms-text a {
+  color: #2b7fff;
+  text-decoration: none;
+  font-weight: 600;
 }
 
 /* Footer */

@@ -45,20 +45,14 @@
           <span class="material-icons">chevron_right</span>
         </div>
       </div>
-      <div class="list-item" @click="openLink('permissions')">
-        <div class="item-icon">
-          <span class="material-icons">verified_user</span>
-        </div>
-        <div class="item-content">Permissions</div>
-        <div class="item-action">
-          <span class="material-icons">chevron_right</span>
-        </div>
-      </div>
       <div class="list-item" @click="openLink('privacy')">
         <div class="item-icon">
           <span class="material-icons">security</span>
         </div>
-        <div class="item-content">Privacy & Security</div>
+        <div class="item-content">
+          <div class="item-title">Privacy & Security</div>
+          <div class="item-subtitle">Terms and Agreement</div>
+        </div>
         <div class="item-action">
           <span class="material-icons">chevron_right</span>
         </div>
@@ -83,21 +77,6 @@
           </label>
         </div>
       </div>
-      <!-- <div class="list-item">
-        <div class="item-icon">
-          <span class="material-icons">sync</span>
-        </div>
-        <div class="item-content">
-          <div class="item-title">Auto Sync</div>
-          <div class="item-subtitle">Sync when online</div>
-        </div>
-        <div class="item-action">
-          <label class="toggle-switch">
-            <input type="checkbox" v-model="preferences.autoSync" />
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-      </div> -->
       <div class="list-item">
         <div class="item-icon">
           <span class="material-icons">dark_mode</span>
@@ -160,30 +139,6 @@
       </div>
     </div>
 
-    <!-- Danger Zone -->
-    <div class="section-title">Danger Zone</div>
-    <div class="card settings-group">
-      <div
-        class="list-item danger-item"
-        @click="deleteAccount"
-        :class="{ disabled: deletingAccount }"
-      >
-        <div class="item-icon danger-icon">
-          <span class="material-icons">delete_forever</span>
-        </div>
-        <div class="item-content">
-          <div class="item-title danger-text">Delete Account</div>
-          <div class="item-subtitle">
-            Permanently remove your account and all associated data
-          </div>
-        </div>
-        <div class="item-action danger-text">
-          <span class="material-icons" v-if="!deletingAccount">chevron_right</span>
-          <span v-else>...</span>
-        </div>
-      </div>
-    </div>
-
     <!-- Footer -->
     <div class="page-footer">
       <p>Version 1.0.0</p>
@@ -195,8 +150,6 @@
         <span v-else>Logging out...</span>
       </button>
     </div>
-
-    <!-- Edit Profile Modal (Simplified Reuse) -->
   </div>
 </template>
 
@@ -216,7 +169,6 @@ const { isDark, toggleTheme } = useTheme();
 const userProfile = ref({});
 const loading = ref(true);
 const loggingOut = ref(false);
-const deletingAccount = ref(false);
 const deviceId = ref("device_" + Math.random().toString(36).substr(2, 9));
 
 const preferences = ref({
@@ -248,38 +200,6 @@ const fetchProfile = async () => {
   }
 };
 
-const updateProfile = async () => {
-  updating.value = true;
-  try {
-    await authService.updateProfile(editForm.value);
-
-    // Use SweetAlert2 for success
-    Swal.fire({
-      title: "Success!",
-      text: "Your profile has been updated.",
-      icon: "success",
-      confirmButtonColor: "#42b883",
-      timer: 2000,
-      timerProgressBar: true,
-    });
-
-    showEditProfile.value = false;
-    fetchProfile();
-  } catch (e) {
-    // Use SweetAlert2 for failure
-    Swal.fire({
-      title: "Update Failed",
-      text:
-        e.response?.data?.message ||
-        "Something went wrong while updating your profile.",
-      icon: "error",
-      confirmButtonColor: "#e74c3c",
-    });
-  } finally {
-    updating.value = false;
-  }
-};
-
 const logout = async () => {
   loggingOut.value = true;
   try {
@@ -292,72 +212,23 @@ const logout = async () => {
   }
 };
 
-const deleteAccount = async () => {
-  if (deletingAccount.value) return;
-
-  const confirmDelete = await Swal.fire({
-    title: "Delete account?",
-    text: "This action is permanent and cannot be undone.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#e74c3c",
-    cancelButtonColor: "#6c757d",
-    confirmButtonText: "Continue",
-  });
-
-  if (!confirmDelete.isConfirmed) return;
-
-  const finalConfirm = await Swal.fire({
-    title: "Final confirmation",
-    text: "Are you sure you want to permanently delete your JuanCharge account?",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#e74c3c",
-    cancelButtonColor: "#6c757d",
-    confirmButtonText: "Yes, delete it",
-  });
-
-  if (!finalConfirm.isConfirmed) return;
-
-  deletingAccount.value = true;
-  try {
-    await authService.deleteAccount();
-    await secureStorage.clearAll();
-    await Swal.fire({
-      title: "Account deleted",
-      text: "Your account has been permanently removed.",
-      icon: "success",
-      confirmButtonColor: "#42b883",
-    });
-    router.push("/get-started");
-  } catch (err) {
-    Swal.fire({
-      title: "Delete failed",
-      text:
-        err.response?.data?.message ||
-        "We couldn't delete your account right now. Please try again.",
-      icon: "error",
-      confirmButtonColor: "#e74c3c",
-    });
-  } finally {
-    deletingAccount.value = false;
-  }
-};
-
 const openLink = (page) => {
-  if (page === "permissions") {
+  if (page === "privacy") {
     Swal.fire({
-      title: "Permissions",
-      text: "Please accept permissions (Location/Camera) when prompted by the app features.",
+      title: "Terms and Agreement",
+      html: `
+        <div style="text-align: left; max-height: 300px; overflow-y: auto; font-size: 14px; padding: 10px;">
+          <h3>1. Terms of Service</h3>
+          <p>By using JuanCharge, you agree to our terms of service regarding the use of charging stations and payment processing.</p>
+          <h3>2. Privacy Policy</h3>
+          <p>We value your privacy. Your data is used only to provide and improve our services.</p>
+          <h3>3. Data Usage</h3>
+          <p>We collect location data to help you find charging stations near you.</p>
+        </div>
+      `,
       icon: "info",
       confirmButtonColor: "#42b883",
-    });
-  } else if (page === "privacy") {
-    Swal.fire({
-      title: "Privacy & Security",
-      text: "This feature is coming soon.",
-      icon: "info",
-      confirmButtonColor: "#42b883",
+      confirmButtonText: "Close"
     });
   }
 };
@@ -455,34 +326,6 @@ onMounted(() => {
   color: var(--text-secondary);
 }
 
-.profile-arrow {
-  color: var(--text-tertiary);
-}
-
-.edit-trigger-btn {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  color: var(--accent-color);
-  padding: 6px 12px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.edit-trigger-btn:active {
-  transform: scale(0.95);
-  background: var(--bg-secondary);
-}
-
-.edit-trigger-btn .material-icons {
-  font-size: 16px;
-}
-
 /* List Items */
 .list-item {
   display: flex;
@@ -533,20 +376,6 @@ onMounted(() => {
 /* Device Section specific */
 .device-item {
   border-bottom: none;
-}
-
-.danger-item {
-  cursor: pointer;
-}
-
-.danger-item.disabled {
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.danger-icon,
-.danger-text {
-  color: var(--error-color);
 }
 
 .device-info-box {
@@ -602,10 +431,6 @@ onMounted(() => {
   justify-content: center;
   gap: 8px;
   cursor: pointer;
-}
-
-.btn-icon {
-  font-size: 20px;
 }
 
 .btn-icon {

@@ -63,6 +63,12 @@ export const dashboardService = {
   getLeaderboard() {
     return api.get("/patron/leaderboard");
   },
+  getKioskUsers(params) {
+    return api.get("/kiosk-users", { params });
+  },
+  getCurrentLeaderboard() {
+    return api.get("/patrons/leaderboards/current");
+  },
   getAchievements() {
     return api.get("/patron/achievements");
   },

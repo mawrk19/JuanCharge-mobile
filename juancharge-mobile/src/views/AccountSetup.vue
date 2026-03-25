@@ -43,11 +43,22 @@
 
 
 
+          <!-- Terms and Agreement Checkbox -->
+          <div class="form-section terms-section">
+            <label class="checkbox-container">
+              <input type="checkbox" v-model="form.accepted_terms" required />
+              <span class="checkmark"></span>
+              <span class="terms-text">
+                I agree to the <a href="#" @click.prevent="showTerms">Terms of Service</a> and <a href="#" @click.prevent="showPrivacy">Privacy Policy</a>
+              </span>
+            </label>
+          </div>
+
           <div v-if="error" class="error-message">
             {{ error }}
           </div>
 
-          <button type="submit" class="submit-btn" :disabled="loading">
+          <button type="submit" class="submit-btn" :disabled="loading || !form.accepted_terms">
             <span v-if="loading" class="material-icons spin">refresh</span>
             <span v-else>Finish Setup</span>
           </button>
@@ -80,6 +91,7 @@ const form = reactive({
   first_name: "",
   last_name: "",
   phone: "",
+  accepted_terms: false,
 });
 
 onMounted(async () => {
@@ -92,9 +104,42 @@ onMounted(async () => {
     }
 });
 
+const showTerms = () => {
+  Swal.fire({
+    title: "Terms of Service",
+    html: `
+      <div style="text-align: left; max-height: 300px; overflow-y: auto; font-size: 14px;">
+        <p>By using JuanCharge, you agree to our terms of service regarding the use of charging stations and payment processing.</p>
+        <p>Charging fees are set by station owners. JuanCharge acts as a platform for these services.</p>
+        <p>A 2.5% convenience fee applies to all top-ups.</p>
+      </div>
+    `,
+    confirmButtonColor: "#42b883",
+  });
+};
+
+const showPrivacy = () => {
+  Swal.fire({
+    title: "Privacy Policy",
+    html: `
+      <div style="text-align: left; max-height: 300px; overflow-y: auto; font-size: 14px;">
+        <p>We value your privacy. Your data is used only to provide and improve our services.</p>
+        <p>We collect location data to help you find charging stations near you.</p>
+        <p>Your payment information is securely processed through licensed third-party providers (PayMongo, etc.).</p>
+      </div>
+    `,
+    confirmButtonColor: "#42b883",
+  });
+};
+
 const handleSetup = async () => {
   if (!form.first_name || !form.last_name) {
     error.value = "Please enter your full name";
+    return;
+  }
+
+  if (!form.accepted_terms) {
+    error.value = "You must agree to the Terms of Service and Privacy Policy";
     return;
   }
 
@@ -102,7 +147,11 @@ const handleSetup = async () => {
   error.value = null;
 
   try {
-    const response = await authService.updateProfile(form);
+    const response = await authService.updateProfile({
+        first_name: form.first_name,
+        last_name: form.last_name,
+        phone: form.phone
+    });
     
     // Update local user data
     const currentUser = await secureStorage.getUserData() || {};
@@ -279,6 +328,78 @@ input:focus {
   margin-bottom: 20px;
   font-size: 14px;
   text-align: center;
+}
+
+/* Checkbox Styles */
+.terms-section {
+  margin-bottom: 24px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  position: relative;
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  height: 22px;
+  width: 22px;
+  background-color: var(--bg-tertiary);
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  border: 1px solid var(--border-color);
+  position: relative;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+  background-color: var(--bg-tertiary);
+  border-color: #42b883;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: #42b883;
+  border-color: #42b883;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 7px;
+  top: 3px;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.terms-text {
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.terms-text a {
+  color: #42b883;
+  text-decoration: none;
+  font-weight: 700;
 }
 
 .footer-actions {

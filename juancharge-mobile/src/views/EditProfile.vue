@@ -58,6 +58,14 @@
             <span v-if="!updating">Save Changes</span>
             <span v-else>Saving...</span>
           </button>
+          
+          <div class="danger-zone">
+            <button type="button" class="delete-btn" @click="handleDeleteAccount" :disabled="deleting">
+              <span class="material-icons">delete_forever</span>
+              <span v-if="!deleting">Delete Account</span>
+              <span v-else>Deleting...</span>
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -68,10 +76,12 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { authService } from "@/services/apiServices";
+import { secureStorage } from "@/services/secureStorage";
 import Swal from "sweetalert2";
 
 const router = useRouter();
 const updating = ref(false);
+const deleting = ref(false);
 const form = ref({
   first_name: "",
   last_name: "",
@@ -80,13 +90,9 @@ const form = ref({
 
 const fetchProfile = async () => {
   try {
-    console.log("[DEBUG] EditProfile - Fetching profile...");
     const response = await authService.me();
-    console.log("[DEBUG] EditProfile - Profile response:", response.data);
-
     const user =
       response.data.user || response.data.data || response.data || {};
-    console.log("[DEBUG] EditProfile - Extracted user data:", user);
 
     form.value = {
       first_name: user.first_name || "",
@@ -94,14 +100,7 @@ const fetchProfile = async () => {
       email: user.email || ""
     };
   } catch (err) {
-    console.error("[DEBUG] EditProfile - Profile load error:", err.message);
-    if (err.response) {
-      console.error(
-        "[DEBUG] EditProfile - Status / Data:",
-        err.response.status,
-        err.response.data
-      );
-    }
+    console.error("Profile load error:", err.message);
   }
 };
 
@@ -131,6 +130,58 @@ const handleUpdate = async () => {
     });
   } finally {
     updating.value = false;
+  }
+};
+
+const handleDeleteAccount = async () => {
+  if (deleting.value) return;
+
+  const confirmDelete = await Swal.fire({
+    title: "Delete account?",
+    text: "This action is permanent and cannot be undone.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#e74c3c",
+    cancelButtonColor: "#6c757d",
+    confirmButtonText: "Continue",
+  });
+
+  if (!confirmDelete.isConfirmed) return;
+
+  const finalConfirm = await Swal.fire({
+    title: "Final confirmation",
+    text: "Are you sure you want to permanently delete your JuanCharge account?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#e74c3c",
+    cancelButtonColor: "#6c757d",
+    confirmButtonText: "Yes, delete it",
+  });
+
+  if (!finalConfirm.isConfirmed) return;
+
+  deleting.value = true;
+  try {
+    await authService.deleteAccount();
+    await secureStorage.clearAll();
+    await Swal.fire({
+      title: "Account deleted",
+      text: "Your account has been permanently removed.",
+      icon: "success",
+      confirmButtonColor: "#42b883",
+    });
+    router.push("/login");
+  } catch (err) {
+    Swal.fire({
+      title: "Delete failed",
+      text:
+        err.response?.data?.message ||
+        "We couldn't delete your account right now. Please try again.",
+      icon: "error",
+      confirmButtonColor: "#e74c3c",
+    });
+  } finally {
+    deleting.value = false;
   }
 };
 
@@ -221,12 +272,15 @@ input:focus {
 
 .action-footer {
   margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .save-btn {
   width: 100%;
   padding: 18px;
-  background: #2b2b2b;
+  background: var(--accent-color);
   color: white;
   border: none;
   border-radius: 14px;
@@ -236,11 +290,34 @@ input:focus {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-[data-theme="dark"] .save-btn {
-  background: var(--accent-color);
+.danger-zone {
+  margin-top: 10px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color);
 }
 
-.save-btn:disabled {
+.delete-btn {
+  width: 100%;
+  padding: 16px;
+  background: none;
+  color: var(--error-color);
+  border: 1px solid var(--error-color);
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.delete-btn:active {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.save-btn:disabled, .delete-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }

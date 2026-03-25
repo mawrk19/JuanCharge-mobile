@@ -13,9 +13,9 @@ import { useTheme } from "@/composables/useTheme";
 const route = useRoute();
 useTheme(); // Initialize theme globally
 
-// Hide navbar on login page
+// Hide navbar on specific screens
 const showBottomNav = computed(() => {
-  return !["/login", "/get-started", "/"].includes(route.path);
+  return !["/login", "/get-started", "/", "/scan", "/account-setup"].includes(route.path);
 });
 
 // Watch for route changes to start/stop polling
@@ -42,7 +42,7 @@ onUnmounted(() => {
     <transition name="page-fade" mode="out-in">
       <router-view />
     </transition>
-    <FloatingChargingWidget />
+    <FloatingChargingWidget v-if="showBottomNav" />
     <BottomNav v-if="showBottomNav" />
     <ToastContainer />
   </div>
