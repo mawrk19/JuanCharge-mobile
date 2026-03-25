@@ -58,14 +58,6 @@
             <span v-if="!updating">Save Changes</span>
             <span v-else>Saving...</span>
           </button>
-          
-          <div class="danger-zone">
-            <button type="button" class="delete-btn" @click="handleDeleteAccount" :disabled="deleting">
-              <span class="material-icons">delete_forever</span>
-              <span v-if="!deleting">Delete Account</span>
-              <span v-else>Deleting...</span>
-            </button>
-          </div>
         </div>
       </form>
     </div>
@@ -81,7 +73,6 @@ import Swal from "sweetalert2";
 
 const router = useRouter();
 const updating = ref(false);
-const deleting = ref(false);
 const form = ref({
   first_name: "",
   last_name: "",
@@ -133,57 +124,6 @@ const handleUpdate = async () => {
   }
 };
 
-const handleDeleteAccount = async () => {
-  if (deleting.value) return;
-
-  const confirmDelete = await Swal.fire({
-    title: "Delete account?",
-    text: "This action is permanent and cannot be undone.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#e74c3c",
-    cancelButtonColor: "#6c757d",
-    confirmButtonText: "Continue",
-  });
-
-  if (!confirmDelete.isConfirmed) return;
-
-  const finalConfirm = await Swal.fire({
-    title: "Final confirmation",
-    text: "Are you sure you want to permanently delete your JuanCharge account?",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#e74c3c",
-    cancelButtonColor: "#6c757d",
-    confirmButtonText: "Yes, delete it",
-  });
-
-  if (!finalConfirm.isConfirmed) return;
-
-  deleting.value = true;
-  try {
-    await authService.deleteAccount();
-    await secureStorage.clearAll();
-    await Swal.fire({
-      title: "Account deleted",
-      text: "Your account has been permanently removed.",
-      icon: "success",
-      confirmButtonColor: "#42b883",
-    });
-    router.push("/login");
-  } catch (err) {
-    Swal.fire({
-      title: "Delete failed",
-      text:
-        err.response?.data?.message ||
-        "We couldn't delete your account right now. Please try again.",
-      icon: "error",
-      confirmButtonColor: "#e74c3c",
-    });
-  } finally {
-    deleting.value = false;
-  }
-};
 
 onMounted(() => {
   fetchProfile();
@@ -290,34 +230,7 @@ input:focus {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.danger-zone {
-  margin-top: 10px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border-color);
-}
-
-.delete-btn {
-  width: 100%;
-  padding: 16px;
-  background: none;
-  color: var(--error-color);
-  border: 1px solid var(--error-color);
-  border-radius: 14px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.2s;
-}
-
-.delete-btn:active {
-  background: rgba(231, 76, 60, 0.1);
-}
-
-.save-btn:disabled, .delete-btn:disabled {
+.save-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
