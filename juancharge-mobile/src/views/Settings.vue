@@ -217,13 +217,56 @@ const openLink = (page) => {
     Swal.fire({
       title: "Terms and Agreement",
       html: `
-        <div style="text-align: left; max-height: 300px; overflow-y: auto; font-size: 14px; padding: 10px;">
-          <h3>1. Terms of Service</h3>
-          <p>By using JuanCharge, you agree to our terms of service regarding the use of charging stations and payment processing.</p>
-          <h3>2. Privacy Policy</h3>
-          <p>We value your privacy. Your data is used only to provide and improve our services.</p>
-          <h3>3. Data Usage</h3>
-          <p>We collect location data to help you find charging stations near you.</p>
+        <div style="text-align: left; max-height: 400px; overflow-y: auto; font-size: 14px; line-height: 1.6; padding: 0 10px;">
+          <p><strong>Last Updated: March 26, 2026</strong></p>
+          <p>Welcome to JuanCharge. These Terms of Service ("Terms") govern your use of the JuanCharge mobile application and the associated IoT-integrated smart kiosks (collectively, the "Service"). By accessing or using the Service, you agree to be bound by these Terms.</p>
+          
+          <h4>1. Acceptance of Terms</h4>
+          <p>By creating an account or using a JuanCharge kiosk, you confirm that you have read, understood, and agree to these Terms. If you do not agree, please do not use the Service.</p>
+          
+          <h4>2. Description of Service</h4>
+          <p>JuanCharge provides an automated recycling and charging solution. Users may deposit eligible plastic bottles or aluminum cans into designated kiosks to receive mobile charging credits or other incentives as defined within the app.</p>
+          
+          <h4>3. User Accounts</h4>
+          <ul>
+              <li><strong>Registration:</strong> You must provide accurate and complete information when creating an account.</li>
+              <li><strong>Security:</strong> You are responsible for maintaining the confidentiality of your login credentials and for all activities that occur under your account.</li>
+              <li><strong>Eligibility:</strong> You must be at least 13 years of age to use this Service.</li>
+          </ul>
+
+          <h4>4. Proper Use of Kiosks</h4>
+          <ul>
+              <li><strong>Eligible Materials:</strong> Only empty, uncrushed plastic bottles and aluminum cans are accepted.</li>
+              <li><strong>Prohibited Items:</strong> Users must not attempt to deposit glass, paper, liquids, hazardous materials, or any items not explicitly supported by the kiosk.</li>
+              <li><strong>Vandalism:</strong> Any attempt to tamper with, damage, or bypass the hardware/software of a JuanCharge kiosk is strictly prohibited and may result in legal action.</li>
+          </ul>
+
+          <h4>5. Incentive Credits</h4>
+          <ul>
+              <li><strong>Earning:</strong> Credits are issued based on the successful validation of recycled materials by the IoT system.</li>
+              <li><strong>Redemption:</strong> Credits are non-transferable and have no cash value outside of the JuanCharge ecosystem.</li>
+              <li><strong>Expiration:</strong> We reserve the right to set expiration dates on promotional credits, which will be communicated via the app.</li>
+          </ul>
+
+          <h4>6. Privacy & Data Collection</h4>
+          <p>Your use of the Service is also governed by our Privacy Policy. We collect data necessary for the functionality of the smart kiosks, including recycling history and charging sessions, to improve our environmental impact reporting.</p>
+
+          <h4>7. Limitation of Liability</h4>
+          <p>JuanCharge and its development team (JuanThugs) shall not be liable for:</p>
+          <ul>
+              <li>Damage to mobile devices resulting from faulty user cables or improper connection to the kiosk.</li>
+              <li>Loss of credits due to unauthorized account access.</li>
+              <li>Service interruptions caused by kiosk maintenance or connectivity issues.</li>
+          </ul>
+
+          <h4>8. Termination</h4>
+          <p>We reserve the right to suspend or terminate your access to the Service at our sole discretion, without notice, for conduct that we believe violates these Terms or is harmful to other users or the Service itself.</p>
+
+          <h4>9. Changes to Terms</h4>
+          <p>We may update these Terms from time to time. We will notify you of any changes by posting the new Terms within the mobile application. Your continued use of the app after such changes constitutes acceptance of the new Terms.</p>
+
+          <h4>10. Contact Information</h4>
+          <p>If you have any questions regarding these Terms, please contact the JuanCharge support team through the "Help" section of the mobile app. Leo.</p>
         </div>
       `,
       icon: "info",
